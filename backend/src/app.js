@@ -1,53 +1,88 @@
-console.log('--- Starting app.js execution ---');
-
-const express = require('express');
-const dotenv = require('dotenv');
-const connectDB = require('./config/db');
+const http = require('http');
+const socketio = require('socket.io');
 const cors = require('cors');
-
-console.log('Dependencies loaded.');
-
-// Load environment variables
-dotenv.config();
-console.log('dotenv config loaded. PORT:', process.env.PORT, 'MONGO_URI:', process.env.MONGO_URI ? '****' : 'NOT SET');
-
-// Connect to database
-// IMPORTANT: Let's make this an async call and add .catch for direct error visibility
-console.log('Attempting to connect to DB...');
-connectDB()
-  .then(() => console.log('DB Connection Attempt Resolved (should be success or handled in db.js)'))
-  .catch(err => {
-    console.error('ERROR: DB connection promise rejected in app.js:', err.message);
-    process.exit(1); // Exit if DB connection fails here
-  });
+const express = require('express'); 
+const { connectDB, mongooseConnection } = require('./config/db');
+const authRoutes = require('./routes/authRoutes');
+const rideRoutes = require('./routes/rideRoutes');
 
 const app = express();
-console.log('Express app initialized.');
 
-// Middleware
-app.use(express.json());
-app.use(cors());
-console.log('Middleware set up.');
+// Connect Database
+// Add .then().catch() or an IIFE to handle the async connectDB call more explicitly
+// and provide more immediate feedback for the connection attempt.
+(async () => {
+  try {
+    await connectDB();
+  } catch (err) {
+    console.error('Failed to connect to MongoDB at startup:', err.message);
+    process.exit(1); // Exit process if DB connection fails
+  }
+})();
 
-// Basic route
-app.get('/', (req, res) => {
-  res.send('API is running...');
-  console.log('Root path accessed.');
-});
-console.log('Basic route defined.');
-
-const PORT = process.env.PORT || 5000;
-console.log(`PORT variable set to: ${PORT}`);
-
-// Add a try-catch around app.listen just in case
-try {
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+// Optional: Listen for Mongoose connection events for more robust logging
+// This part is useful for understanding connection state changes during runtime.
+// Only include if you're using Mongoose and exporting `mongooseConnection` from `db.js`.
+if (mongooseConnection) {
+  mongooseConnection.on('connected', () => {
+    console.log('Mongoose default connection open to DB');
   });
-  console.log('app.listen called.');
-} catch (err) {
-  console.error('ERROR: Failed to call app.listen:', err.message);
-  process.exit(1);
+
+  mongooseConnection.on('error', (err) => {
+    console.error('Mongoose default connection error:', err);
+  });
+
+  mongooseConnection.on('disconnected', () => {
+    console.warn('Mongoose default connection disconnected');
+  });
 }
 
-console.log('--- End of app.js execution flow ---');
+
+// Init Middleware
+app.use(express.json()); // Body parser for JSON requests
+// Add URL-encoded middleware if you expect form submissions
+app.use(express.urlencoded({ extended: true }));
+app.use(cors());
+
+// Define API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/rides', rideRoutes);
+
+// Add a simple health check or base route
+app.get('/', (req, res) => {
+  res.send('Ride-Share Backend API is running!');
+});
+
+
+const PORT = process.env.PORT || 5000;
+
+const server = http.createServer(app);
+const io = socketio(server);
+
+// WebSocket (Socket.IO) handling
+io.on('connection', (socket) => {
+  console.log('New WebSocket connection:', socket.id); // Log socket ID for better tracking
+  
+  // Handle driver location updates
+  socket.on('driverLocation', (data) => {
+    console.log(`Driver ${data.driverId || 'unknown'} location update:`, data.latitude, data.longitude); // Log received data
+    // Emit the location update to all connected clients
+    io.emit('locationUpdate', data); 
+  });
+
+  // Handle disconnection
+  socket.on('disconnect', () => {
+    console.log('WebSocket disconnected:', socket.id);
+  });
+
+  // Optional: Handle other potential Socket.IO errors
+  socket.on('error', (err) => {
+    console.error('Socket error:', err);
+  });
+});
+
+// Start the server
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Access API at: http://localhost:${PORT}`);
+});

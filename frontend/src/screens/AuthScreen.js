@@ -1,63 +1,57 @@
 import React, { useState } from 'react';
-import { View, TextInput, Button, Text, StyleSheet } from 'react-native';
 import { useDispatch } from 'react-redux';
 import { login } from '../features/authSlice';
 
-const AuthScreen = ({ navigation }) => {
+const AuthScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLogin, setIsLogin] = useState(true);
+  const [isDriver, setIsDriver] = useState(false);
   const dispatch = useDispatch();
 
-  const handleAuth = async () => {
-    try {
-      // API call to backend
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-
-      const data = await response.json();
-      dispatch(login({ token: data.token, role: data.role }));
-      
-      if (data.role === 'passenger') {
-        navigation.navigate('PassengerHome');
-      } else {
-        navigation.navigate('DriverHome');
-      }
-    } catch (err) {
-      console.error(err);
-    }
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    dispatch(login({ email, isDriver }));
   };
 
   return (
-    <View style={styles.container}>
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-      <Button title={isLogin ? 'Login' : 'Sign Up'} onPress={handleAuth} />
-      <Text style={styles.switchText} onPress={() => setIsLogin(!isLogin)}>
-        {isLogin ? 'Create new account' : 'Already have an account? Login'}
-      </Text>
-    </View>
+    <div className="auth-screen">
+      <h2>Sign In</h2>
+      <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label>Email:</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+        
+        <div className="form-group">
+          <label>Password:</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
+        
+        <div className="form-group checkbox">
+          <label>
+            <input
+              type="checkbox"
+              checked={isDriver}
+              onChange={(e) => setIsDriver(e.target.checked)}
+            />
+            I'm a driver
+          </label>
+        </div>
+        
+        <button type="submit" className="submit-btn">Sign In</button>
+      </form>
+    </div>
   );
 };
-
-const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 20 },
-  input: { height: 40, borderColor: 'gray', borderWidth: 1, marginBottom: 10 },
-  switchText: { color: 'blue', textAlign: 'center', marginTop: 10 }
-});
 
 export default AuthScreen;

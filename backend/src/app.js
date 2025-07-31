@@ -1,88 +1,114 @@
 const http = require('http');
 const socketio = require('socket.io');
 const cors = require('cors');
-const express = require('express'); 
+const express = require('express');
 const { connectDB, mongooseConnection } = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const rideRoutes = require('./routes/rideRoutes');
 
 const app = express();
 
-// Connect Database
-// Add .then().catch() or an IIFE to handle the async connectDB call more explicitly
-// and provide more immediate feedback for the connection attempt.
+// Database Connection with improved error handling
 (async () => {
   try {
     await connectDB();
+    console.log('MongoDB connected successfully');
   } catch (err) {
-    console.error('Failed to connect to MongoDB at startup:', err.message);
-    process.exit(1); // Exit process if DB connection fails
+    console.error('MongoDB connection error:', err.message);
+    process.exit(1);
   }
 })();
 
-// Optional: Listen for Mongoose connection events for more robust logging
-// This part is useful for understanding connection state changes during runtime.
-// Only include if you're using Mongoose and exporting `mongooseConnection` from `db.js`.
-if (mongooseConnection) {
-  mongooseConnection.on('connected', () => {
-    console.log('Mongoose default connection open to DB');
-  });
-
-  mongooseConnection.on('error', (err) => {
-    console.error('Mongoose default connection error:', err);
-  });
-
-  mongooseConnection.on('disconnected', () => {
-    console.warn('Mongoose default connection disconnected');
-  });
-}
-
-
-// Init Middleware
-app.use(express.json()); // Body parser for JSON requests
-// Add URL-encoded middleware if you expect form submissions
+// Middleware
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:3000',
+  credentials: true
+}));
 
-// Define API Routes
+// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/rides', rideRoutes);
 
-// Add a simple health check or base route
+// Test Endpoints
 app.get('/', (req, res) => {
   res.send('Ride-Share Backend API is running!');
 });
 
+app.get('/api/hello', (req, res) => {
+  res.json({ message: 'Hello from Backend API!' });
+});
 
 const PORT = process.env.PORT || 5000;
-
 const server = http.createServer(app);
-const io = socketio(server);
 
-// WebSocket (Socket.IO) handling
+// Socket.IO Configuration with proper CORS and error handling
+const io = socketio(server, {
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"],
+    credentials: true
+  },
+  transports: ['websocket', 'polling'],
+  allowEIO3: true
+});
+
+// Socket.IO Connection Handling
 io.on('connection', (socket) => {
-  console.log('New WebSocket connection:', socket.id); // Log socket ID for better tracking
-  
-  // Handle driver location updates
+  console.log(`Client connected: ${socket.id}`);
+
+  // Send connection confirmation
+  socket.emit('connection_ack', {
+    status: 'connected',
+    socketId: socket.id,
+    message: 'Successfully connected to server'
+  });
+
+  // Driver Location Updates
   socket.on('driverLocation', (data) => {
-    console.log(`Driver ${data.driverId || 'unknown'} location update:`, data.latitude, data.longitude); // Log received data
-    // Emit the location update to all connected clients
-    io.emit('locationUpdate', data); 
+    console.log(`Location update from ${data.driverId || 'unknown'}:`, {
+      lat: data.latitude,
+      lng: data.longitude
+    });
+    
+    // Broadcast to all clients
+    io.emit('locationUpdate', {
+      driverId: data.driverId,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      timestamp: new Date().toISOString()
+    });
   });
 
-  // Handle disconnection
-  socket.on('disconnect', () => {
-    console.log('WebSocket disconnected:', socket.id);
+  // Heartbeat/Ping
+  socket.on('ping', (callback) => {
+    callback('pong');
   });
 
-  // Optional: Handle other potential Socket.IO errors
+  // Error Handling
   socket.on('error', (err) => {
-    console.error('Socket error:', err);
+    console.error(`Socket error (${socket.id}):`, err);
+  });
+
+  // Disconnection
+  socket.on('disconnect', (reason) => {
+    console.log(`Client disconnected (${socket.id}):`, reason);
   });
 });
 
-// Start the server
+// Socket.IO Engine Error Handling
+io.engine.on("connection_error", (err) => {
+  console.error('Socket.IO connection error:', {
+    code: err.code,
+    message: err.message,
+    context: err.context
+  });
+});
+
+// Server Startup
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`Access API at: http://localhost:${PORT}`);
+  console.log(`HTTP API: http://localhost:${PORT}`);
+  console.log(`WebSocket: ws://localhost:${PORT}`);
 });

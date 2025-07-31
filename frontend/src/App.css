@@ -1,38 +1,108 @@
 .App {
+  font-family: 'Arial', sans-serif;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Auth Screen Styles */
+.auth-screen {
+  max-width: 400px;
+  margin: 50px auto;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.auth-screen h2 {
   text-align: center;
+  margin-bottom: 20px;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.form-group {
+  margin-bottom: 15px;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.form-group input[type="email"],
+.form-group input[type="password"] {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.form-group.checkbox {
   display: flex;
-  flex-direction: column;
   align-items: center;
+}
+
+.form-group.checkbox label {
+  margin-left: 8px;
+  font-weight: normal;
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 12px;
+  background-color: #6f4b4e;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.submit-btn:hover {
+  background-color: #6f4b4e;
+}
+
+/* Map Placeholder */
+.map-placeholder {
+  height: 400px;
+  background-color: #f0f0f0;
+  display: flex;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
+  align-items: center;
+  border: 1px dashed #ccc;
+  margin: 20px 0;
+  color: #666;
+}
+
+/* Ride Request Modal */
+.ride-request-modal {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: white;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  z-index: 1000;
+}
+
+.modal-buttons button {
+  margin-right: 10px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.modal-buttons button:first-child {
+  background-color: #4CAF50;
   color: white;
 }
 
-.App-link {
-  color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.modal-buttons button:last-child {
+  background-color: #f44336;
+  color: white;
 }

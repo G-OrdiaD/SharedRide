@@ -1,10 +1,3 @@
-.App {
-  font-family: 'Arial', sans-serif;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
 /* Auth Screen Styles */
 .auth-screen {
   max-width: 400px;
@@ -20,89 +13,92 @@
   margin-bottom: 20px;
 }
 
+/* Form Group Styling - Made smaller */
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 12px; /* Reduced from 15px */
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 4px; /* Reduced from 5px */
   font-weight: bold;
+  font-size: 14px; /* Added smaller font size */
 }
 
+.form-group input[type="text"],
+.form-group input[type="tel"],
 .form-group input[type="email"],
 .form-group input[type="password"] {
   width: 100%;
-  padding: 10px;
+  padding: 8px; /* Reduced from 10px */
   border: 1px solid #ddd;
   border-radius: 4px;
   box-sizing: border-box;
+  font-size: 14px; /* Added smaller font size */
 }
 
-.form-group.checkbox {
-  display: flex;
-  align-items: center;
-}
-
-.form-group.checkbox label {
-  margin-left: 8px;
-  font-weight: normal;
-}
-
+/* Button Styling - Centered and smaller */
 .submit-btn {
-  width: 100%;
-  padding: 12px;
+  width: auto; /* Changed from 100% */
+  padding: 8px 24px; /* Reduced from 12px */
   background-color: #6f4b4e;
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 14px; /* Reduced from 16px */
+  display: block; /* Added for centering */
+  margin: 15px auto; /* Centered */
+  transition: all 0.3s ease; /* Smooth hover transition */
 }
 
-.submit-btn:hover {
-  background-color: #6f4b4e;
+/* Hover effects for both buttons */
+.submit-btn:hover,
+.toggle-btn:hover {
+  background-color: #5a393b; /* Darker shade */
+  transform: scale(1.02); /* Slight enlargement */
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow */
 }
 
-/* Map Placeholder */
-.map-placeholder {
-  height: 400px;
-  background-color: #f0f0f0;
+/* Toggle button styling */
+.auth-toggle {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.toggle-btn {
+  background: none;
+  border: none;
+  color: #0066cc;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 5px 10px; /* Added padding */
+  font-size: 14px; /* Smaller font */
+  border-radius: 3px;
+  transition: all 0.3s ease; /* Smooth transition */
+}
+
+.toggle-btn:hover {
+  color: #004499;
+  background-color: rgba(0,102,204,0.1); /* Light background on hover */
+  text-decoration: none;
+}
+
+/* Role selection styling */
+.role-selection {
+  margin: 1rem 0; /* Reduced from 1.5rem */
+}
+
+.role-options {
   display: flex;
-  justify-content: center;
+  gap: 1rem; /* Reduced from 1.5rem */
+  margin-top: 0.5rem;
+}
+
+.role-options label {
+  display: flex;
   align-items: center;
-  border: 1px dashed #ccc;
-  margin: 20px 0;
-  color: #666;
-}
-
-/* Ride Request Modal */
-.ride-request-modal {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  background: white;
-  padding: 20px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-  z-index: 1000;
-}
-
-.modal-buttons button {
-  margin-right: 10px;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
+  gap: 0.5rem;
   cursor: pointer;
-}
-
-.modal-buttons button:first-child {
-  background-color: #4CAF50;
-  color: white;
-}
-
-.modal-buttons button:last-child {
-  background-color: #f44336;
-  color: white;
+  font-size: 14px; /* Smaller font */
 }

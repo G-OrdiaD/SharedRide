@@ -1,10 +1,10 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'http://localhost:5000'; // Match your backend
 
 /**
- * Enhanced API service with guaranteed safe response formats
+ * Enhanced API service with proper endpoint matching
  */
 
-// Shared request headers with TypeScript-like type safety
+// Shared request headers
 const getHeaders = () => {
   const headers = {
     'Content-Type': 'application/json'
@@ -19,7 +19,10 @@ const getHeaders = () => {
 };
 
 /**
- * Universal request handler with response normalization
+ * Universal request handler
+ * This function now correctly prepends the API_BASE_URL to the endpoint.
+ * The endpoints passed to this function should now be the full relative path
+ * from the base URL, including the /api/auth or /api/rides prefix.
  */
 const handleRequest = async (endpoint, options = {}) => {
   try {
@@ -36,113 +39,80 @@ const handleRequest = async (endpoint, options = {}) => {
       throw new Error(errorData.message || 'Request failed');
     }
 
-    const data = await response.json();
-    
-    // Normalize response to always return object with data/message
-    return {
-      success: true,
-      data: data.data || data,
-      message: data.message || 'Request successful'
-    };
+    return await response.json();
     
   } catch (error) {
     console.error(`API request to ${endpoint} failed:`, error);
-    
-    // Normalize error response
-    return {
-      success: false,
-      message: error.message || 'Network error',
-      error: error
-    };
+    throw error; // Re-throw for components to handle
   }
 };
 
 /**
- * Test endpoint with guaranteed string return
+ * Test endpoint connectivity
  */
 export const getHelloMessage = async () => {
-  const response = await handleRequest('/hello');
-  return response.success 
-    ? String(response.message || response.data || 'Hello from backend')
-    : response.message;
+  return handleRequest('/'); // Assuming / is your backend's base health check
 };
 
 /**
  * Authentication service
  */
 export const authService = {
-  login: async (email, password) => {
-    const response = await handleRequest('/auth/login', {
+  login: async ({ email, password }) => {
+    // FIX: Corrected endpoint to include /api/auth prefix
+    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({ email, password })
     });
-    
-    if (response.success && response.data?.token) {
-      localStorage.setItem('jwtToken', response.data.token);
-    }
-    
-    return response;
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Login failed');
+    return data;
   },
-  
-  logout: () => {
-    localStorage.removeItem('jwtToken');
+  register: async ({ name, email, password, phone, isDriver }) => {
+    // FIX: Corrected endpoint to include /api/auth prefix
+    const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name, email, password, phone, role: isDriver ? 'driver' : 'passenger' })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Registration failed');
+    return data;
   }
 };
 
 /**
- * Ride service with normalized responses
+ * Ride service
  */
 export const rideService = {
-  requestRide: async (pickup, destination) => {
-    const response = await handleRequest('/rides/request', {
+  requestRide: (pickup, destination) => {
+    // FIX: Corrected endpoint to include /api/rides prefix
+    return handleRequest('/api/rides/request', {
       method: 'POST',
       body: JSON.stringify({ pickup, destination })
     });
-    
-    return {
-      ...response,
-      rideId: response.data?.id || null
-    };
   },
-  
-  getStatus: async (rideId) => {
-    const response = await handleRequest(`/rides/status/${rideId}`);
-    return {
-      ...response,
-      status: response.data?.status || 'unknown'
-    };
-  },
-  
-  cancel: async (rideId) => {
-    return await handleRequest(`/rides/cancel/${rideId}`, {
-      method: 'POST'
+
+  completeRide: (rideId) => {
+    // FIX: Corrected endpoint to include /api/rides prefix
+    return handleRequest(`/api/rides/${rideId}/complete`, {
+      method: 'PUT'
     });
   }
 };
 
 /**
- * User service
+ * User service (if needed)
  */
 export const userService = {
-  getProfile: async () => {
-    const response = await handleRequest('/auth/profile');
-    return {
-      ...response,
-      profile: response.data || null
-    };
-  },
-  
-  updateProfile: async (profileData) => {
-    return await handleRequest('/auth/profile', {
-      method: 'PUT',
-      body: JSON.stringify(profileData)
-    });
-  }
-};
-
-/**
- * Utility to check if error is an API error
- */
-export const isApiError = (error) => {
-  return error && error.message && !error.success;
+  getProfile: () => handleRequest('/api/auth/me'), // Assuming /api/auth/me is the correct endpoint for user profile
+  updateProfile: (data) => handleRequest('/api/auth/me', {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  })
 };

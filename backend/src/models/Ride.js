@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 // Corrected: Destructure 'getFareStrategy' from the factory module.
 // This assumes your 'fareStrategyFactory.js' exports it as:
 // module.exports = { getFareStrategy: ... };
+// NOTE: This file assumes you have a strategies/fareStrategyFactory.js file.
 const { getFareStrategy } = require('../strategies/fareStrategyFactory');
 
 const RideSchema = new mongoose.Schema({
@@ -56,7 +57,11 @@ RideSchema.pre('save', function(next) {
 
       // Ensure the strategy and its calculate method exist before calling
       if (strategy && typeof strategy.calculate === 'function') {
-        this.fare = strategy.calculate(this.origin, this.destination);
+        // NOTE: Fare calculation typically needs distance and time.
+        // For simplicity, this example passes origin/destination.
+        // You might need to add logic to calculate distance/time here
+        // or ensure it's passed from the frontend/another service.
+        this.fare = strategy.calculate(this.origin, this.destination); 
       } else {
         // Log a warning or throw an error if no valid strategy is found
         console.warn(`No valid fare strategy found for type: ${this.type}. Fare not calculated.`);

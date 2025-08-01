@@ -1,33 +1,31 @@
 import { io } from 'socket.io-client';
 
-const SOCKET_SERVER_URL = 'http://localhost:5000'; // Match your backend URL
+const SOCKET_SERVER_URL = 'http://localhost:5000';
+let socket = null;
 
-let socket = null; // Initialize socket instance
-
-export const connectSocket = () => {
-  if (!socket) { // Only create a new socket if one doesn't already exist
-    socket = io(SOCKET_SERVER_URL);
+export const connectSocket = (token) => {
+  if (!socket) {
+    socket = io(SOCKET_SERVER_URL, {
+      auth: { token },
+      transports: ['websocket'],
+      reconnectionAttempts: 3
+    });
 
     socket.on('connect', () => {
-      console.log('Socket.IO: Connected to backend!');
+      console.log('Socket.IO connected');
     });
 
     socket.on('disconnect', () => {
-      console.log('Socket.IO: Disconnected from backend.');
+      console.log('Socket.IO disconnected');
     });
 
-    socket.on('connect_error', (err) => {
-      console.error('Socket.IO: Connection error:', err.message);
+    socket.on('newRide', (ride) => {
+      console.log('New ride request:', ride);
     });
 
-    // Listen for the 'locationUpdate' event from the backend
-    socket.on('locationUpdate', (data) => {
-      console.log('Socket.IO: Received location update:', data);
-      // In a real app, you would update your map or UI here
+    socket.on('rideAccepted', (data) => {
+      console.log('Ride accepted:', data);
     });
-
-    // You can add more listeners for other real-time events here
-    // socket.on('rideRequested', (rideData) => { ... });
   }
   return socket;
 };
@@ -35,16 +33,12 @@ export const connectSocket = () => {
 export const disconnectSocket = () => {
   if (socket) {
     socket.disconnect();
-    socket = null; // Clear the socket instance
+    socket = null;
   }
 };
 
-// Example function to emit a message (e.g., driver sending location)
-export const emitDriverLocation = (driverId, lat, lng) => {
+export const emitLocation = (location) => {
   if (socket && socket.connected) {
-    console.log(`Socket.IO: Emitting driver location for ${driverId}: ${lat}, ${lng}`);
-    socket.emit('driverLocation', { driverId, latitude: lat, longitude: lng });
-  } else {
-    console.warn('Socket.IO: Not connected, cannot emit driver location.');
+    socket.emit('driverLocation', location);
   }
 };

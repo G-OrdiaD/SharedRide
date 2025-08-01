@@ -10,7 +10,7 @@ const UserSchema = new mongoose.Schema({
   // This means Mongoose will look at the 'role' value to determine
   // which specific schema (Passenger, Driver) to apply.
   role:       { type: String, enum: ['passenger', 'driver'], required: true },
-  passwordHash: { type: String, required: true }
+  passwordHash: { type: String, required: true, select: false } // Added select: false to hide by default
 }, {
   discriminatorKey: 'role', // This tells Mongoose to use the 'role' field to differentiate sub-models
   timestamps: true // Adds createdAt and updatedAt fields

@@ -1,3 +1,13 @@
+import RegisterForm from '../components/auth/RegisterForm';
+
+function AuthPage() {
+  return (
+    <div className="auth-page">
+      <RegisterForm />
+      {/* Already have an account? Login link */}
+    </div>
+  );
+}
 async function registerUser(name, phone, role, password) {
     try {
         const response = await fetch('http://localhost:5000/api/auth/register', {

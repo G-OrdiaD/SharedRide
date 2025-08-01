@@ -1,90 +1,146 @@
 const Ride = require('../models/Ride');
-const { User, Passenger, Driver } = require('../models/User');
-const PaymentFactory = require('../factories/PaymentFactory'); 
-const RideManagementSystem = require('../services/RideManagementSystem').getInstance();
 
-/**
- * Handles a new ride request from a passenger.
- * @param {Object} req - The request object.
- * @param {Object} res - The response object.
- * @param {Function} next - The next middleware function.
- */
-exports.requestRide = async (req, res, next) => {
+exports.requestRide = async (req, res) => {
+  const { origin, destination, rideType } = req.body;
+
+  if (!origin || !destination) {
+    return res.status(400).json({ error: "Origin and destination required" });
+  }
+
   try {
-    // Extract necessary data from the request body
-    const { origin, destination, type } = req.body;
-
-    // Assuming req.user is populated by an authentication middleware
-    // and contains the authenticated user's ID and role.
-    // Use the Passenger discriminator model to find the passenger by ID.
-    const passenger = await Passenger.findById(req.user._id);
-
-    // If the passenger is not found, return a 404 error.
-    if (!passenger) {
-      return res.status(404).json({ error: 'Passenger not found' });
-    }
-
-    // Create a new ride using the RideManagementSystem.
-    // Ensure createRide method in RideManagementSystem accepts these arguments
-    // and returns a Mongoose Ride document.
-    const ride = RideManagementSystem.createRide(
-      passenger._id, // Pass the passenger's ID
+    const ride = new Ride({
+      passenger: req.user.id,
       origin,
       destination,
-      type
-    );
+      rideType,
+      status: 'REQUESTED' // Ensure status matches enum in Ride.js
+    });
 
-    // Save the newly created ride to the database.
-    // The pre-save hook in Ride.js will calculate the fare here.
     await ride.save();
 
-    // Emit an event to notify subscribed drivers about the new ride request.
-    // This assumes RideManagementSystem has an event emitter.
-    RideManagementSystem.emit('rideRequested', ride);
+    // Broadcast to drivers
+    // NOTE: req.io needs to be attached to the request object,
+    // typically done in app.js if using middleware or directly in route setup.
+    // Assuming req.io is correctly available here.
+    if (req.io) {
+      req.io.emit('newRide', {
+        rideId: ride._id,
+        origin,
+        destination,
+        rideType
+      });
+    } else {
+      console.warn('Socket.IO instance (req.io) not available in rideController.requestRide');
+    }
 
-    // Respond with the created ride details and a 201 Created status.
-    res.status(201).json(ride);
+    res.status(201).json({
+      _id: ride._id,
+      status: ride.status,
+      passenger: ride.passenger,
+      origin: ride.origin,
+      destination: ride.destination,
+      fare: ride.fare
+    });
   } catch (err) {
-    // Pass any errors to the next middleware (e.g., an error handling middleware)
-    console.error('Error requesting ride:', err.message);
-    next(err);
+    console.error(err.message);
+    res.status(500).json({ error: "Failed to request ride" });
+  }
+};
+
+exports.acceptRide = async (req, res) => {
+  try {
+    const ride = await Ride.findById(req.params.rideId);
+    if (!ride) {
+      return res.status(404).json({ error: "Ride not found" });
+    }
+
+    // Ensure only a driver can accept a ride and it's in 'REQUESTED' status
+    if (ride.status !== 'REQUESTED') {
+      return res.status(400).json({ error: "Ride is not in a requested state" });
+    }
+    if (ride.driver) {
+      return res.status(400).json({ error: "Ride already has a driver" });
+    }
+
+    ride.driver = req.user.id; // Assign the accepting driver's ID
+    ride.status = 'MATCHED'; // Update status to 'MATCHED' or 'ACCEPTED'
+    await ride.save();
+
+    // Notify the passenger that their ride has been accepted
+    if (req.io) {
+      req.io.to(ride.passenger.toString()).emit('rideAccepted', {
+        rideId: ride._id,
+        driverId: req.user.id, // Send driver's ID
+        driverName: req.user.name // Assuming req.user has name from authMiddleware
+      });
+    } else {
+      console.warn('Socket.IO instance (req.io) not available in rideController.acceptRide');
+    }
+
+    res.json(ride);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: "Failed to accept ride" });
   }
 };
 
 /**
- * Handles the completion of a ride.
- * @param {Object} req - The request object.
- * @param {Object} res - The response object.
- * @param {Function} next - The next middleware function.
+ * @desc Complete a ride (typically called by driver)
+ * @route PUT /api/rides/:rideId/complete
+ * @access Private (Driver)
  */
-exports.completeRide = async (req, res, next) => {
+exports.completeRide = async (req, res) => {
   try {
-    // Find the ride by its ID from the request parameters.
     const ride = await Ride.findById(req.params.rideId);
 
-    // If the ride is not found, return a 404 error.
     if (!ride) {
-      return res.status(404).json({ error: 'Ride not found' });
+      return res.status(404).json({ error: "Ride not found" });
     }
 
-    // Update the ride status to 'COMPLETED'.
-    ride.status = 'COMPLETED';
-    // Save the updated ride status to the database.
+    // Ensure only the assigned driver can complete the ride
+    // And the ride is in an 'ONGOING' or 'MATCHED' state
+    if (ride.driver.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ error: "Not authorized to complete this ride" });
+    }
+    if (ride.status !== 'ONGOING' && ride.status !== 'MATCHED') {
+      return res.status(400).json({ error: "Ride cannot be completed in its current state" });
+    }
+
+    ride.status = 'COMPLETED'; // Set status to completed
+    ride.endTime = new Date(); // Record completion time
+    // You might want to calculate final fare here if it wasn't done on request
+    // or if it needs adjustment based on actual trip details.
+    // For now, assuming fare was set on request.
+
     await ride.save();
 
-    // Create a payment instance using the PaymentFactory.
-    // Ensure PaymentFactory.create accepts paymentType, rideId, and fare.
-    const payment = PaymentFactory.create(req.body.paymentType, ride._id, ride.fare);
+    // Optionally, trigger payment processing here or in a separate service
+    // const Payment = require('../models/Payment');
+    // const payment = new Payment({
+    //   ride: ride._id,
+    //   amount: ride.fare,
+    //   passenger: ride.passenger,
+    //   type: 'credit', // Or based on passenger's default payment method
+    //   status: 'PENDING'
+    // });
+    // await payment.save();
+    // await payment.process(); // Mark payment as paid
 
-    // Process the payment.
-    // Ensure payment.process() method exists and handles the payment logic.
-    await payment.process();
+    // Notify passenger that the ride is completed
+    if (req.io) {
+        req.io.to(ride.passenger.toString()).emit('rideCompleted', {
+            rideId: ride._id,
+            fare: ride.fare,
+            status: ride.status
+        });
+    } else {
+        console.warn('Socket.IO instance (req.io) not available in rideController.completeRide');
+    }
 
-    // Respond with success status and the fare amount.
-    res.json({ success: true, amount: ride.fare });
+
+    res.json(ride);
   } catch (err) {
-    // Pass any errors to the next middleware.
-    console.error('Error completing ride:', err.message);
-    next(err);
+    console.error(err.message);
+    res.status(500).json({ error: "Failed to complete ride" });
   }
 };

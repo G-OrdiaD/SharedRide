@@ -1,43 +1,16 @@
 const bcrypt = require('bcryptjs');
-const User = require('../models/User');
-const Passenger = require('../models/Passenger');
-const Driver = require('../models/Driver');
+const { User, Passenger, Driver } = require('../models/User'); // Destructure User, Passenger, Driver
 
-exports.register = async (req, res, next) => {
+
+// Example of a user-specific controller function (if needed, e.g., for profile updates)
+exports.getUserProfile = async (req, res, next) => {
   try {
-    const { name, phone, password, role } = req.body;
-    const passwordHash = await bcrypt.hash(password, 12);
-
-    let user;
-    if (role === 'driver') {
-      user = new Driver({ name, phone, passwordHash });
-    } else {
-      user = new Passenger({ name, phone, passwordHash });
-    }
-
-    await user.save();
-    const token = user.generateJWT();
-    res.json({ token });
-  } catch (err) {
-    next(err);
-  }
-};
-
-exports.login = async (req, res, next) => {
-  try {
-    const { phone, password } = req.body;
-    const user = await User.findOne({ phone });
+    // Assuming req.user is populated by authMiddleware
+    const user = await User.findById(req.user.id).select('-passwordHash');
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(404).json({ error: 'User not found' });
     }
-
-    const valid = await user.verifyPassword(password);
-    if (!valid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    const token = user.generateJWT();
-    res.json({ token });
+    res.json(user);
   } catch (err) {
     next(err);
   }

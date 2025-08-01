@@ -5,12 +5,13 @@ const jwt = require('jsonwebtoken'); // For JWT generation
 // Define the base User Schema
 const UserSchema = new mongoose.Schema({
   name:       { type: String, required: true },
+  email:      { type: String, required: true, unique: true },
   phone:      { type: String, required: true, unique: true },
+  
   // The 'role' field will be used by Mongoose as the discriminator key.
-  // This means Mongoose will look at the 'role' value to determine
   // which specific schema (Passenger, Driver) to apply.
   role:       { type: String, enum: ['passenger', 'driver'], required: true },
-  passwordHash: { type: String, required: true, select: false } // Added select: false to hide by default
+  passwordHash: { type: String, required: true, select: false } 
 }, {
   discriminatorKey: 'role', // This tells Mongoose to use the 'role' field to differentiate sub-models
   timestamps: true // Adds createdAt and updatedAt fields

@@ -1,41 +1,73 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { login, register } from '../features/authSlice';
-import { Link } from 'react-router-dom';
+import { login as loginThunk, register } from '../features/authSlice';
+import { Link, useNavigate } from 'react-router-dom'; 
 
 const AuthScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isDriver, setIsDriver] = useState(false);
-  const [isRegistering, setIsRegistering] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false); // Controls if Register or Sign In form is shown
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [registrationStatus, setRegistrationStatus] = useState(null);
+  const [registrationStatus, setRegistrationStatus] = useState(null); // Used for displaying success/error messages
+  const navigate = useNavigate();
   const dispatch = useDispatch();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    let resultAction; 
+
     try {
       if (isRegistering) {
-        const resultAction = await dispatch(register({ name, email, password, phone, isDriver }));
+        // --- REGISTRATION LOGIC ---
+        resultAction = await dispatch(register({ name, email, password, phone, isDriver }));
+        
         if (register.fulfilled.match(resultAction)) {
-          setRegistrationStatus({ success: true, message: 'Registration successful!' });
+          // FIX: Show success message and switch to Sign In form, DO NOT navigate automatically
+          setRegistrationStatus({ success: true, message: 'Registration successful! Please sign in.' });
           setName('');
           setEmail('');
           setPassword('');
           setPhone('');
           setIsDriver(false);
+          setIsRegistering(false); // Automatically switch to the Sign In form
+          
+          // Removed automatic navigation here. User will now manually sign in.
         } else {
+          // Handle registration rejection
           setRegistrationStatus({ 
             success: false, 
             message: resultAction.error.message || 'Registration failed' 
           });
         }
-      } else {
-        await dispatch(login({ email, isDriver }));
+      } else { 
+        // --- LOGIN LOGIC ---
+        resultAction = await dispatch(loginThunk({ email, password })); 
+        
+        if (loginThunk.fulfilled.match(resultAction)) {
+          // Handle successful login: show message and then navigate
+          setRegistrationStatus({ success: true, message: 'Login successful!' }); 
+          
+          // Navigate only on successful login
+          if (resultAction.payload && resultAction.payload.role) {
+            if (resultAction.payload.role === 'driver') {
+              navigate('/driver');
+            } else {
+              navigate('/passenger');
+            }
+          }
+        } else {
+          // Handle login rejection
+          setRegistrationStatus({
+            success: false,
+            message: resultAction.error.message || 'Login failed'
+          });
+        }
       }
     } catch (error) {
-      setRegistrationStatus({ success: false, message: error.message || 'An error occurred' });
+      // This catch block handles unexpected errors during dispatch or API call
+      setRegistrationStatus({ success: false, message: error.message || 'An unexpected error occurred' });
     }
   };
 

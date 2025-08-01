@@ -1,3 +1,4 @@
+require('dotenv').config();
 const http = require('http');
 const socketio = require('socket.io');
 const express = require('express'); 
@@ -87,7 +88,7 @@ io.on('connection', (socket) => {
     console.log('WebSocket disconnected:', socket.id);
   });
 
-  // Optional: Handle other potential Socket.IO errors
+  // Handle other potential Socket.IO errors
   socket.on('error', (err) => {
     console.error('Socket error:', err);
   });

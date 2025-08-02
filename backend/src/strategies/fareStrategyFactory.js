@@ -1,41 +1,50 @@
-const PaymentFactory = {
-      /**
-       * Creates a payment processor based on the payment type.
-       * @param {string} paymentType - e.g., 'credit_card', 'paypal'
-       * @param {string} rideId - The ID of the ride.
-       * @param {number} amount - The amount to process.
-       * @returns {Object} A payment processor object with a 'process' method.
-       */
-      create: (paymentType, rideId, amount) => {
-        // In a real application, you'd have actual payment processing logic
-        // based on the paymentType.
-        switch (paymentType) {
-          case 'credit_card':
-            return {
-              process: async () => {
-                console.log(`Processing Credit Card payment for ride ${rideId}, amount: $${amount}`);
-                // Simulate async payment processing
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                console.log('Credit Card payment successful.');
-                return { success: true, transactionId: 'cc_trans_123' };
-              }
-            };
-          case 'paypal':
-            return {
-              process: async () => {
-                console.log(`Processing PayPal payment for ride ${rideId}, amount: $${amount}`);
-                // Simulate async payment processing
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                console.log('PayPal payment successful.');
-                return { success: true, transactionId: 'pp_trans_456' };
-              }
-            };
-          default:
-            console.error(`Unsupported payment type: ${paymentType}`);
-            throw new Error(`Unsupported payment type: ${paymentType}`);
-        }
-      }
-    };
+// backend/src/strategies/fareStrategyFactory.js
 
-    module.exports = PaymentFactory;
-    
+const fareStrategies = {
+  standard: {
+    calculate: (originLat, originLng, destLat, destLng) => {
+      // Dummy calculation for now. In a real app, you'd use a distance matrix API
+      // to get actual distance and estimated time, then apply a rate.
+      // For example, a base fare + rate per km/mile.
+      const baseFare = 5; // Example base fare
+      const distanceFactor = 0.5; // Example cost per unit distance
+      // Simplified "distance" for demonstration (Euclidean distance on a flat plane)
+      const distance = Math.sqrt(
+        Math.pow(destLat - originLat, 2) + Math.pow(destLng - originLng, 2)
+      );
+      return baseFare + (distance * distanceFactor);
+    }
+  },
+  pool: {
+    calculate: (originLat, originLng, destLat, destLng) => {
+      // Pool might be cheaper
+      const baseFare = 3;
+      const distanceFactor = 0.3;
+      const distance = Math.sqrt(
+        Math.pow(destLat - originLat, 2) + Math.pow(destLng - originLng, 2)
+      );
+      return baseFare + (distance * distanceFactor);
+    }
+  },
+  luxury: {
+    calculate: (originLat, originLng, destLat, destLng) => {
+      // Luxury might be more expensive
+      const baseFare = 10;
+      const distanceFactor = 1.0;
+      const distance = Math.sqrt(
+        Math.pow(destLat - originLat, 2) + Math.pow(destLng - originLng, 2)
+      );
+      return baseFare + (distance * distanceFactor);
+    }
+  }
+};
+
+/**
+ * Returns the appropriate fare strategy based on ride type.
+ * @param {string} rideType - 'standard', 'pool', or 'luxury'
+ * @returns {object} A fare strategy object with a 'calculate' method.
+ */
+exports.getFareStrategy = (rideType) => {
+  // Return the specific strategy, or a default if not found
+  return fareStrategies[rideType] || fareStrategies.standard;
+};

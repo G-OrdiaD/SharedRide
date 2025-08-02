@@ -32,10 +32,3 @@ async function requestRide(origin, destination, type) {
         throw error;
     }
 }
-
-// Example usage
-// const origin = { lat: 34.0522, lng: -118.2437 }; // Los Angeles
-// const destination = { lat: 34.0000, lng: -118.5000 }; // Santa Monica
-// requestRide(origin, destination, 'standard')
-//   .then(ride => console.log('New ride:', ride))
-//   .catch(err => console.error(err.message));

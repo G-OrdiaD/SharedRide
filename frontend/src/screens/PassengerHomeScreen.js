@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../features/authSlice'; // Import the logout action
+import RideRequestForm from '../components/RideRequestForm'; // Import the RideRequestForm component
 
 const PassengerHomeScreen = () => {
   // Access user data from Redux store
@@ -38,14 +39,12 @@ const PassengerHomeScreen = () => {
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md text-center">
         <h2 className="text-3xl font-bold text-gray-800 mb-4">Passenger Home</h2>
         <p className="text-gray-600 mb-2">Welcome, <span className="font-semibold">{user.name}</span>!</p>
-        {/* Removed email display as requested */}
         <p className="text-gray-600 mb-6">Role: <span className="font-semibold capitalize">{user.role}</span></p>
 
-        {/* Placeholder for passenger-specific features */}
+        {/* Integrate the RideRequestForm component here */}
         <div className="border-t border-gray-200 pt-6 mt-6">
           <h3 className="text-xl font-semibold text-gray-700 mb-4">Book a Ride</h3>
-          <p className="text-gray-500 mb-4">Passenger Map and Ride Request form will appear here.</p>
-          {/* Future: <RideRequestForm /> */}
+          <RideRequestForm /> {/* Render the ride request form */}
         </div>
 
         <button

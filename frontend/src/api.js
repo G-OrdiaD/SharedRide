@@ -20,9 +20,6 @@ const getHeaders = () => {
 
 /**
  * Universal request handler
- * This function now correctly prepends the API_BASE_URL to the endpoint.
- * The endpoints passed to this function should now be the full relative path
- * from the base URL, including the /api/auth or /api/rides prefix.
  */
 const handleRequest = async (endpoint, options = {}) => {
   try {
@@ -43,7 +40,7 @@ const handleRequest = async (endpoint, options = {}) => {
     
   } catch (error) {
     console.error(`API request to ${endpoint} failed:`, error);
-    throw error; // Re-throw for components to handle
+    throw error;
   }
 };
 
@@ -51,7 +48,7 @@ const handleRequest = async (endpoint, options = {}) => {
  * Test endpoint connectivity
  */
 export const getHelloMessage = async () => {
-  return handleRequest('/'); // Assuming / is your backend's base health check
+  return handleRequest('/');
 };
 
 /**
@@ -59,7 +56,6 @@ export const getHelloMessage = async () => {
  */
 export const authService = {
   login: async ({ email, password }) => {
-    // FIX: Corrected endpoint to include /api/auth prefix
     const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
       method: 'POST',
       headers: {
@@ -72,7 +68,6 @@ export const authService = {
     return data;
   },
   register: async ({ name, email, password, phone, isDriver }) => {
-    // FIX: Corrected endpoint to include /api/auth prefix
     const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
       method: 'POST',
       headers: {
@@ -90,16 +85,14 @@ export const authService = {
  * Ride service
  */
 export const rideService = {
-  requestRide: (pickup, destination) => {
-    // FIX: Corrected endpoint to include /api/rides prefix
+  requestRide: (originLocation, destinationLocation, rideType) => {
     return handleRequest('/api/rides/request', {
       method: 'POST',
-      body: JSON.stringify({ pickup, destination })
+      body: JSON.stringify({ origin: originLocation, destination: destinationLocation, rideType })
     });
   },
 
   completeRide: (rideId) => {
-    // FIX: Corrected endpoint to include /api/rides prefix
     return handleRequest(`/api/rides/${rideId}/complete`, {
       method: 'PUT'
     });
@@ -110,7 +103,7 @@ export const rideService = {
  * User service (if needed)
  */
 export const userService = {
-  getProfile: () => handleRequest('/api/auth/me'), // Assuming /api/auth/me is the correct endpoint for user profile
+  getProfile: () => handleRequest('/api/auth/me'),
   updateProfile: (data) => handleRequest('/api/auth/me', {
     method: 'PUT',
     body: JSON.stringify(data)

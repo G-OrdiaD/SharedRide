@@ -39,8 +39,3 @@ async function registerUser(name, phone, role, password) {
         throw error; // Re-throw to be handled by calling component/function
     }
 }
-
-// Example usage (e.g., on a form submission)
-// registerUser('John Doe', '123-456-7890', 'passenger', 'mySecurePassword123')
-//   .then(data => console.log('User registered:', data))
-//   .catch(err => console.error('Failed to register:', err.message));

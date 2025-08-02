@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { getHelloMessage } from './api';
-import { connectSocket, disconnectSocket } from './socket';
+import { connectSocket, disconnectSocket } from './socket'; // Import connect/disconnect
 import './App.css';
 import { Provider } from 'react-redux';
 import store from './store';
@@ -18,31 +18,31 @@ function App() {
     // HTTP Connection Test
     async function fetchMessage() {
       try {
-        const message = await getHelloMessage();
-        setHttpMessage(message);
+        const response = await getHelloMessage();
+        setHttpMessage(response.message);
       } catch (error) {
         setHttpMessage(`Error: ${error.message}`);
       }
     }
     fetchMessage();
 
-    // Socket.IO Connection Test
-    const socket = connectSocket();
+    // Socket.IO Connection Test for general connectivity (explicitly no token)
+    const generalSocket = connectSocket(null); // Pass null to ensure unauthenticated connection
 
-    socket.on('connect', () => {
+    generalSocket.on('connect', () => {
       setSocketStatus('Socket.IO: Connected!');
     });
     
-    socket.on('disconnect', () => {
+    generalSocket.on('disconnect', () => {
       setSocketStatus('Socket.IO: Disconnected.');
     });
     
-    socket.on('connect_error', (err) => {
+    generalSocket.on('connect_error', (err) => {
       setSocketStatus(`Socket.IO Error: ${err.message}`);
     });
 
     return () => {
-      disconnectSocket();
+      disconnectSocket(false); // Disconnect the general socket on unmount
     };
   }, []);
 

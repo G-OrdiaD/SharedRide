@@ -1,34 +1,73 @@
 const Ride = require('../models/Ride');
 
+const GOOGLE_GEOCODING_API_KEY = process.env.GOOGLE_GEOCODING_API_KEY;
+
+/**
+ * Helper function to geocode a location string (address or postcode) into lat/lng.
+ * Uses native Node.js fetch.
+ * @param {string} locationString - Can be a full address or a postcode.
+ * @returns {object} { lat, lng } or throws an error
+ */
+const geocodeAddress = async (locationString) => {
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(locationString)}&key=${GOOGLE_GEOCODING_API_KEY}`;
+
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.status === 'OK' && data.results.length > 0) {
+      const location = data.results[0].geometry.location;
+      return { lat: location.lat, lng: location.lng };
+    } else {
+      console.error('Geocoding API error:', data.status, data.error_message);
+      throw new Error(`Could not find coordinates for: "${locationString}". Please check the address/postcode.`);
+    }
+  } catch (error) {
+    console.error('Error calling Geocoding API:', error.message);
+    throw new Error('Failed to convert address to coordinates. Please try again.');
+  }
+};
+
+
 exports.requestRide = async (req, res) => {
   const { origin, destination, rideType } = req.body;
 
-  if (!origin || !destination) {
-    return res.status(400).json({ error: "Origin and destination required" });
+  if (!origin || typeof origin !== 'string' || !destination || typeof destination !== 'string') {
+    return res.status(400).json({ error: "Origin and destination locations are required as strings." });
   }
 
   try {
+    const geocodedOrigin = await geocodeAddress(origin);
+    const geocodedDestination = await geocodeAddress(destination);
+
     const ride = new Ride({
       passenger: req.user.id,
-      origin,
-      destination,
-      rideType,
-      status: 'REQUESTED' // Ensure status matches enum in Ride.js
+      origin: {
+        locationString: origin,
+        lat: geocodedOrigin.lat,
+        lng: geocodedOrigin.lng
+      },
+      destination: {
+        locationString: destination,
+        lat: geocodedDestination.lat,
+        lng: geocodedDestination.lng
+      },
+      rideType: rideType,
+      status: 'REQUESTED'
     });
 
     await ride.save();
 
-    // Broadcast to drivers
-    // NOTE: req.io needs to be attached to the request object,
-    // typically done in app.js if using middleware or directly in route setup.
-    // Assuming req.io is correctly available here.
+    // Broadcast to drivers in the 'drivers' room
     if (req.io) {
-      req.io.emit('newRide', {
+      req.io.to('drivers').emit('newRide', { // Emit only to sockets in the 'drivers' room
         rideId: ride._id,
-        origin,
-        destination,
-        rideType
+        origin: ride.origin,
+        destination: ride.destination,
+        rideType: ride.rideType,
+        passengerId: ride.passenger // Include passenger ID for potential future use
       });
+      console.log(`Emitted newRide to 'drivers' room for ride ID: ${ride._id}`);
     } else {
       console.warn('Socket.IO instance (req.io) not available in rideController.requestRide');
     }
@@ -43,7 +82,7 @@ exports.requestRide = async (req, res) => {
     });
   } catch (err) {
     console.error(err.message);
-    res.status(500).json({ error: "Failed to request ride" });
+    res.status(500).json({ error: err.message || "Failed to request ride" });
   }
 };
 
@@ -54,7 +93,6 @@ exports.acceptRide = async (req, res) => {
       return res.status(404).json({ error: "Ride not found" });
     }
 
-    // Ensure only a driver can accept a ride and it's in 'REQUESTED' status
     if (ride.status !== 'REQUESTED') {
       return res.status(400).json({ error: "Ride is not in a requested state" });
     }
@@ -62,17 +100,25 @@ exports.acceptRide = async (req, res) => {
       return res.status(400).json({ error: "Ride already has a driver" });
     }
 
-    ride.driver = req.user.id; // Assign the accepting driver's ID
-    ride.status = 'MATCHED'; // Update status to 'MATCHED' or 'ACCEPTED'
+    ride.driver = req.user.id;
+    ride.status = 'MATCHED';
     await ride.save();
 
     // Notify the passenger that their ride has been accepted
     if (req.io) {
       req.io.to(ride.passenger.toString()).emit('rideAccepted', {
         rideId: ride._id,
-        driverId: req.user.id, // Send driver's ID
-        driverName: req.user.name // Assuming req.user has name from authMiddleware
+        driverId: req.user.id,
+        driverName: req.user.name,
+        rideDetails: {
+            origin: ride.origin,
+            destination: ride.destination,
+            rideType: ride.rideType,
+            fare: ride.fare
+        }
       });
+      // Optional: Notify other drivers that this ride is no longer available
+      req.io.to('drivers').emit('rideRemoved', { rideId: ride._id });
     } else {
       console.warn('Socket.IO instance (req.io) not available in rideController.acceptRide');
     }
@@ -97,8 +143,6 @@ exports.completeRide = async (req, res) => {
       return res.status(404).json({ error: "Ride not found" });
     }
 
-    // Ensure only the assigned driver can complete the ride
-    // And the ride is in an 'ONGOING' or 'MATCHED' state
     if (ride.driver.toString() !== req.user.id.toString()) {
       return res.status(403).json({ error: "Not authorized to complete this ride" });
     }
@@ -106,27 +150,11 @@ exports.completeRide = async (req, res) => {
       return res.status(400).json({ error: "Ride cannot be completed in its current state" });
     }
 
-    ride.status = 'COMPLETED'; // Set status to completed
-    ride.endTime = new Date(); // Record completion time
-    // You might want to calculate final fare here if it wasn't done on request
-    // or if it needs adjustment based on actual trip details.
-    // For now, assuming fare was set on request.
+    ride.status = 'COMPLETED';
+    ride.endTime = new Date();
 
     await ride.save();
 
-    // Optionally, trigger payment processing here or in a separate service
-    // const Payment = require('../models/Payment');
-    // const payment = new Payment({
-    //   ride: ride._id,
-    //   amount: ride.fare,
-    //   passenger: ride.passenger,
-    //   type: 'credit', // Or based on passenger's default payment method
-    //   status: 'PENDING'
-    // });
-    // await payment.save();
-    // await payment.process(); // Mark payment as paid
-
-    // Notify passenger that the ride is completed
     if (req.io) {
         req.io.to(ride.passenger.toString()).emit('rideCompleted', {
             rideId: ride._id,
@@ -136,7 +164,6 @@ exports.completeRide = async (req, res) => {
     } else {
         console.warn('Socket.IO instance (req.io) not available in rideController.completeRide');
     }
-
 
     res.json(ride);
   } catch (err) {

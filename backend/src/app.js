@@ -2,7 +2,7 @@ require('dotenv').config(); // Load environment variables first
 
 const http = require('http');
 const socketio = require('socket.io');
-const express = require('express'); 
+const express = require('express');
 const cors = require ('cors');
 const jwt = require('jsonwebtoken'); // Import jsonwebtoken for Socket.IO auth
 const { connectDB, mongooseConnection } = require('./config/db');
@@ -38,10 +38,13 @@ if (mongooseConnection) {
 }
 
 // Init Middleware
-app.use(express.json()); 
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// --- START OF CORS FIX ---
+// Update the origin to allow your specific IP address or an array of allowed origins
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: ['http://localhost:3000', 'http://192.168.100.90:3000'], // Allow both localhost and your specific IP
   credentials: true
 }));
 
@@ -51,13 +54,14 @@ const server = http.createServer(app);
 // Socket.IO Configuration with proper CORS and error handling
 const io = socketio(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: ["http://localhost:3000", "http://192.168.100.90:3000"], // Allow both localhost and your specific IP for Socket.IO
     methods: ["GET", "POST"],
     credentials: true
   },
   transports: ['websocket', 'polling'],
   allowEIO3: true
 });
+// --- END OF CORS FIX ---
 
 // Socket.IO Authentication Middleware
 io.use(async (socket, next) => {
@@ -67,7 +71,7 @@ io.use(async (socket, next) => {
 
   if (!token) {
     console.log('Socket.IO Middleware: Allowing unauthenticated connection (no token provided).');
-    return next(); 
+    return next();
   }
 
   try {
@@ -77,7 +81,7 @@ io.use(async (socket, next) => {
 
     console.log('Socket.IO Middleware: Attempting to find user in DB...');
     const user = await User.findById(decoded.id).select('-passwordHash');
-    
+
     if (!user) {
       console.log('Socket.IO Middleware: User not found for token. Rejecting connection.');
       return next(new Error('Authentication error: User not found'));
@@ -87,16 +91,19 @@ io.use(async (socket, next) => {
     console.log(`Socket.IO Middleware: User ${user.email} (${user.role}) authenticated successfully.`);
 
     if (user.role === 'driver') {
-      socket.join('drivers');
+      socket.join('drivers'); // Corrected to join the 'drivers' room directly
       console.log(`Socket.IO Middleware: Driver ${user.email} (${socket.id}) joined 'drivers' room.`);
     }
+    // Also join a private room for the user (passenger or driver)
+    socket.join(user._id.toString()); // Join user-specific room for private messages
+    console.log(`Socket.IO Middleware: User ${user.email} (${socket.id}) joined private room '${user._id.toString()}'.`);
 
     console.log('Socket.IO Middleware: Authenticated connection allowed.');
-    next(); 
+    next();
   } catch (err) {
     console.error('Socket.IO Middleware: Authentication Error during token verification or user lookup:', err.message);
     // Log the full error object for more details
-    console.error('Socket.IO Middleware: Full error object:', err); 
+    console.error('Socket.IO Middleware: Full error object:', err);
     return next(new Error('Authentication error: Invalid token or server issue'));
   }
 });
@@ -110,7 +117,7 @@ app.use((req, res, next) => {
 
 // Define API Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/rides', rideRoutes); 
+app.use('/api/rides', rideRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Backend API is running!' });
@@ -122,13 +129,13 @@ io.on('connection', (socket) => {
   if (socket.user) {
     console.log(`Socket.IO: Authenticated user ${socket.user.email} connected. Socket ID: ${socket.id}`);
   } else {
-    console.log('Socket.IO: General unauthenticated socket connected. Socket ID: ${socket.id}');
+    console.log(`Socket.IO: General unauthenticated socket connected. Socket ID: ${socket.id}`);
   }
 
   socket.on('driverLocation', (data) => {
     if (socket.user && socket.user.role === 'driver') {
       console.log(`Driver ${socket.user.email} location update:`, data.latitude, data.longitude);
-      io.emit('locationUpdate', { ...data, driverId: socket.user.id }); 
+      io.emit('locationUpdate', { ...data, driverId: socket.user.id });
     } else {
       console.warn('Received driverLocation from non-driver or unauthenticated socket.');
     }

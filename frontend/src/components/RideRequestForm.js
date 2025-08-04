@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { useDispatch } from 'react-redux';
-import { rideService } from '../api'; // Corrected import path
+import { rideService } from '../api'; // import path
 
 const RideRequestForm = () => {
   // State for single origin and destination location strings
@@ -10,7 +9,7 @@ const RideRequestForm = () => {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const dispatch = useDispatch();
+  // const dispatch = useDispatch(); // Removed this line
 
   const handleSubmit = async (e) => {
     e.preventDefault();

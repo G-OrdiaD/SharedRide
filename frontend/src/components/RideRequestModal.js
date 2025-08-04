@@ -1,14 +1,21 @@
 import React from 'react';
 
-const RideRequestModal = ({ rideDetails, onAccept, onReject }) => (
-  <div className="bg-white p-6 rounded-lg shadow-xl text-center">
+const RideRequestModal = ({ rideDetails, onAccept, onReject, onClose }) => (
+  <div className="bg-white p-6 rounded-lg shadow-xl text-center relative">
+    <button
+        onClick={onClose}
+        className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-2xl font-bold"
+        aria-label="Close"
+    >
+        &times;
+    </button>
     <h3 className="text-2xl font-bold mb-4">New Ride Request!</h3>
     {rideDetails && (
       <>
-        {/* Display locationString from the rideDetails object */}
         <p className="text-lg mb-2">From: {rideDetails.origin.locationString}</p>
         <p className="text-lg mb-4">To: {rideDetails.destination.locationString}</p>
-        <p className="text-md mb-6">Type: <span className="capitalize">{rideDetails.rideType}</span></p>
+        <p className="text-md mb-2">Type: <span className="capitalize">{rideDetails.rideType}</span></p>
+        <p className="text-md mb-6 font-bold text-green-600">Fare: ${rideDetails.fare ? rideDetails.fare.toFixed(2) : 'N/A'}</p>
       </>
     )}
     <div className="flex justify-center space-x-4">

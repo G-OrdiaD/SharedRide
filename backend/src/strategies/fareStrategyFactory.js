@@ -1,5 +1,3 @@
-// backend/src/strategies/fareStrategyFactory.js
-
 const fareStrategies = {
   standard: {
     calculate: (originLat, originLng, destLat, destLng) => {

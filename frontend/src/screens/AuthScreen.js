@@ -1,176 +1,169 @@
-import React, { useState } from 'react';
-import { useDispatch } from 'react-redux';
-import { login as loginThunk, register } from '../features/authSlice';
-import { Link, useNavigate } from 'react-router-dom'; 
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { login, register } from '../features/authSlice';
 
 const AuthScreen = () => {
+  const [isRegister, setIsRegister] = useState(false);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isDriver, setIsDriver] = useState(false);
-  const [isRegistering, setIsRegistering] = useState(false); // Controls if Register or Sign In form is shown
-  const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [registrationStatus, setRegistrationStatus] = useState(null); // Used for displaying success/error messages
-  const navigate = useNavigate();
+  const [isDriver, setIsDriver] = useState(false);
+  const [message, setMessage] = useState(null);
+  const [loading, setLoading] = useState(false);
+
   const dispatch = useDispatch();
+
+  // Get auth state from Redux
+  const authStatus = useSelector((state) => state.auth.status);
+  const authError = useSelector((state) => state.auth.error);
+  const user = useSelector((state) => state.auth.user);
+
+  // This useEffect will now only manage the message and loading state based on Redux status
+  useEffect(() => {
+    if (authStatus === 'succeeded') {
+      setMessage({ type: 'success', text: `Welcome, ${user?.name}!` }); // Use optional chaining for safety
+      setLoading(false);
+      
+      // Redirect to home screen after successful login/register
+      if (user?.role === 'driver') {
+        window.location.replace('/driver');
+      } else if (user?.role === 'passenger') {
+        window.location.replace('/passenger');
+      }
+   
+    } else if (authStatus === 'failed' && authError) {
+      setMessage({ type: 'error', text: authError || 'Authentication failed.' });
+      setLoading(false);
+    } else if (authStatus === 'loading') {
+      setLoading(true);
+      setMessage(null);
+    }
+  }, [authStatus, user, authError]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    let resultAction; 
+    setMessage(null);
+    setLoading(true);
 
     try {
-      if (isRegistering) {
-        // --- REGISTRATION LOGIC ---
-        resultAction = await dispatch(register({ name, email, password, phone, isDriver }));
-        
-        if (register.fulfilled.match(resultAction)) {
-          // FIX: Show success message and switch to Sign In form, DO NOT navigate automatically
-          setRegistrationStatus({ success: true, message: 'Registration successful! Please sign in.' });
-          setName('');
-          setEmail('');
-          setPassword('');
-          setPhone('');
-          setIsDriver(false);
-          setIsRegistering(false); // Automatically switch to the Sign In form
-          
-          // Removed automatic navigation here. User will now manually sign in.
-        } else {
-          // Handle registration rejection
-          setRegistrationStatus({ 
-            success: false, 
-            message: resultAction.error.message || 'Registration failed' 
-          });
-        }
-      } else { 
-        // --- LOGIN LOGIC ---
-        resultAction = await dispatch(loginThunk({ email, password })); 
-        
-        if (loginThunk.fulfilled.match(resultAction)) {
-          // Handle successful login: show message and then navigate
-          setRegistrationStatus({ success: true, message: 'Login successful!' }); 
-          
-          // Navigate only on successful login
-          if (resultAction.payload && resultAction.payload.role) {
-            if (resultAction.payload.role === 'driver') {
-              navigate('/driver');
-            } else {
-              navigate('/passenger');
-            }
-          }
-        } else {
-          // Handle login rejection
-          setRegistrationStatus({
-            success: false,
-            message: resultAction.error.message || 'Login failed'
-          });
-        }
+      if (isRegister) {
+        await dispatch(register({ name, email, password, phone, isDriver })).unwrap();
+      } else {
+        await dispatch(login({ email, password })).unwrap();
       }
     } catch (error) {
-      // This catch block handles unexpected errors during dispatch or API call
-      setRegistrationStatus({ success: false, message: error.message || 'An unexpected error occurred' });
+      console.error('AuthScreen: Dispatch error caught:', error);
+      // Error message will be set by useEffect based on authError state
+    } finally {
+      // setLoading is managed by useEffect based on authStatus
     }
   };
 
   return (
-    <div className="auth-screen">
-      <h2>{isRegistering ? 'Register' : 'Sign In'}</h2>
-      
-      {registrationStatus && (
-        <div className={`status-message ${registrationStatus.success ? 'success' : 'error'}`}>
-          {registrationStatus.message}
-        </div>
-      )}
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+        <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">
+          {isRegister ? 'Register' : 'Sign In'}
+        </h2>
 
-      <form onSubmit={handleSubmit}>
-        {isRegistering && (
-          <>
-            <div className="form-group">
-              <label>Full Name:</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Phone Number:</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                required
-              />
-            </div>
-          </>
+        {message && (
+          <div className={`p-3 mb-4 rounded-md text-sm ${message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+            {message.text}
+          </div>
         )}
-        
-        <div className="form-group">
-          <label>Email:</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-        
-        <div className="form-group">
-          <label>Password:</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        
-        <div className="form-group checkbox">
-          <label>
+
+        <form onSubmit={handleSubmit}>
+          {isRegister && (
+            <div className="mb-4">
+              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="name">
+                Name:
+              </label>
+              <input
+                  type="text"
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  required
+              />
+            </div>
+          )}
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
+              Email:
+            </label>
             <input
-              type="checkbox"
-              checked={isDriver}
-              onChange={(e) => setIsDriver(e.target.checked)}
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                required
             />
-            I'm a Driver
-          </label>
-        </div>
-        
-        <button type="submit" className="submit-btn">
-          {isRegistering ? 'Register' : 'Sign In'}
-        </button>
-      </form>
+          </div>
+          <div className="mb-6">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
+              Password:
+            </label>
+            <input
+                type="password"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                required
+            />
+          </div>
+          {isRegister && (
+            <>
+              <div className="mb-4">
+                <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="phone">
+                  Phone:
+                </label>
+                <input
+                    type="text"
+                    id="phone"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    required
+                />
+              </div>
+              <div className="mb-6 flex items-center">
+                <input
+                    type="checkbox"
+                    id="isDriver"
+                    checked={isDriver}
+                    onChange={(e) => setIsDriver(e.target.checked)}
+                    className="mr-2 leading-tight"
+                />
+                <label className="text-gray-700 text-sm" htmlFor="isDriver">
+                  Register as Driver
+                </label>
+              </div>
+            </>
+          )}
+          <button
+              type="submit"
+              disabled={loading}
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:shadow-outline w-full transition duration-300 ease-in-out"
+          >
+            {loading ? (isRegister ? 'Registering...' : 'Signing In...') : (isRegister ? 'Register' : 'Sign In')}
+          </button>
+        </form>
 
-      <div className="auth-toggle">
-        {isRegistering ? (
-          <p>
-            Already have an account?{' '}
-            <button 
-              type="button" 
-              onClick={() => {
-                setIsRegistering(false);
-                setRegistrationStatus(null); // Clear status when toggling
-              }}
-              className="toggle-btn"
+        <div className="mt-6 text-center">
+          <p className="text-gray-600">
+            {isRegister ? 'Already have an account?' : 'Don\'t have an account?'}
+            <button
+                onClick={() => setIsRegister(!isRegister)}
+                className="text-blue-500 hover:text-blue-800 font-bold ml-2 focus:outline-none"
             >
-              Sign In
+              {isRegister ? 'Sign In' : 'Register'}
             </button>
           </p>
-        ) : (
-          <p>
-            Don't have an account?{' '}
-            <button 
-              type="button" 
-              onClick={() => {
-                setIsRegistering(true);
-                setRegistrationStatus(null); // Clear status when toggling
-              }}
-              className="toggle-btn"
-            >
-              Register
-            </button>
-          </p>
-        )}
+        </div>
       </div>
     </div>
   );

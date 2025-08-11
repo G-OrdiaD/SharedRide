@@ -8,12 +8,14 @@ exports.register = async (req, res) => {
 
   // Validation
   if (!name || !email || !password || !phone || !role) {
+    console.log(`[AUTH DEBUG] Registration failed: Missing fields for email: ${email}`); // ADD LOG
     return res.status(400).json({ error: "All fields are required" });
   }
 
   try {
     let user = await User.findOne({ email });
     if (user) {
+      console.log(`[AUTH DEBUG] Registration failed: Email already exists for ${email}`); // ADD LOG
       return res.status(400).json({ error: "Email already exists" });
     }
 
@@ -21,8 +23,6 @@ exports.register = async (req, res) => {
     user = new User({
       name,
       email,
-      // The password field in the request body maps to passwordHash in the schema.
-      // The pre-save hook in User.js handles the hashing.
       passwordHash: password, // Pass plain password, schema pre-save hook hashes it
       phone,
       role
@@ -32,6 +32,7 @@ exports.register = async (req, res) => {
 
     const token = user.generateJWT(); // Generate JWT using the method defined in User model
     
+    console.log(`[AUTH DEBUG] Registration successful for user: ${user.email}, Role: ${user.role}`); // ADD LOG
     res.status(201).json({
       token,
       user: {
@@ -42,7 +43,7 @@ exports.register = async (req, res) => {
       }
     });
   } catch (err) {
-    console.error(err.message);
+    console.error(`[AUTH DEBUG] Server error during registration for ${email}:`, err.message); // ADD LOG
     res.status(500).json({ error: "Server error during registration" });
   }
 };
@@ -52,24 +53,32 @@ exports.login = async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
+    console.log(`[AUTH DEBUG] Login attempt: Missing email or password for ${email}`); // ADD LOG
     return res.status(400).json({ error: "Email and password required" });
   }
 
   try {
+    console.log(`[AUTH DEBUG] Login attempt for email: ${email}`); // ADD LOG
     // Select('+passwordHash') is needed because passwordHash is set to select: false by default
     const user = await User.findOne({ email }).select('+passwordHash');
+
     if (!user) {
+      console.log(`[AUTH DEBUG] Login failed: User not found for email: ${email}`); // ADD LOG
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
+    console.log(`[AUTH DEBUG] User found: ${user.email}. Attempting password verification.`); // ADD LOG
     // Verify password using the method defined in User model
     const isMatch = await user.verifyPassword(password);
+
     if (!isMatch) {
+      console.log(`[AUTH DEBUG] Login failed: Password mismatch for email: ${email}`); // ADD LOG
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
     const token = user.generateJWT(); // Generate JWT using the method defined in User model
     
+    console.log(`[AUTH DEBUG] Login successful for user: ${user.email}, Role: ${user.role}`); // ADD LOG
     res.json({
       token,
       user: {
@@ -80,7 +89,7 @@ exports.login = async (req, res) => {
       }
     });
   } catch (err) {
-    console.error(err.message);
+    console.error(`[AUTH DEBUG] Server error during login for email ${email}:`, err.message); // ADD LOG
     res.status(500).json({ error: "Server error during login" });
   }
 };
@@ -91,11 +100,13 @@ exports.getMe = async (req, res) => {
     // req.user is populated by authMiddleware
     const user = await User.findById(req.user.id).select('-passwordHash');
     if (!user) {
+      console.log(`[AUTH DEBUG] getMe failed: User not found for ID: ${req.user.id}`); // ADD LOG
       return res.status(404).json({ error: 'User not found' });
     }
+    console.log(`[AUTH DEBUG] getMe successful for user: ${user.email}`); // ADD LOG
     res.json(user);
   } catch (err) {
-    console.error(err.message);
+    console.error(`[AUTH DEBUG] Server error fetching user data for ID ${req.user.id}:`, err.message); // ADD LOG
     res.status(500).json({ error: 'Server error fetching user data' });
   }
 };

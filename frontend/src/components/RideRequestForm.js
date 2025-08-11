@@ -9,7 +9,6 @@ const RideRequestForm = () => {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // const dispatch = useDispatch(); // Removed this line
 
   const handleSubmit = async (e) => {
     e.preventDefault();

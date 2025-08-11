@@ -1,9 +1,6 @@
 const fareStrategies = {
   standard: {
     calculate: (originLat, originLng, destLat, destLng) => {
-      // Dummy calculation for now. In a real app, you'd use a distance matrix API
-      // to get actual distance and estimated time, then apply a rate.
-      // For example, a base fare + rate per km/mile.
       const baseFare = 5; // Example base fare
       const distanceFactor = 0.5; // Example cost per unit distance
       // Simplified "distance" for demonstration (Euclidean distance on a flat plane)

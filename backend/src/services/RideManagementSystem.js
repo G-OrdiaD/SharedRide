@@ -1,7 +1,5 @@
 const EventEmitter = require('events'); // Node.js built-in event emitter
 const Ride = require('../models/Ride'); // Import the Ride model
-// Import User, Passenger, and Driver models using destructuring
-// from the models/User.js file.
 const { User, Passenger, Driver } = require('../models/User');
 
 class RideManagementSystem extends EventEmitter {

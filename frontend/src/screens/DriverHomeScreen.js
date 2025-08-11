@@ -1,9 +1,8 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../features/authSlice';
-import { connectSocket, disconnectSocket, getAuthenticatedSocket } from '../socket';
-import { rideService } from '../api'; // Import rideService
+import { rideService } from '../api';
 import RideRequestModal from '../components/RideRequestModal';
 import CustomAlertDialog from '../components/CustomAlertDialog';
 
@@ -15,190 +14,102 @@ const DriverHomeScreen = () => {
 
   const [showRideRequestModal, setShowRideRequestModal] = useState(false);
   const [currentRideRequest, setCurrentRideRequest] = useState(null);
-  const [newRideRequests, setNewRideRequests] = useState([]); // State to hold all available rides
-  const [alertMessage, setAlertMessage] = useState(''); // For custom alerts
+  const [newRideRequests, setNewRideRequests] = useState([]);
+  const [alertMessage, setAlertMessage] = useState('');
   const [showAlert, setShowAlert] = useState(false);
 
-  const socketRef = useRef(null);
-  const listenersSetRef = useRef(false); // New ref to track if listeners are set for this socket instance
 
   // This useEffect handles navigation based on auth status
   useEffect(() => {
     if (isAuthReady && (!user || user.role !== 'driver')) {
-      console.log('DriverHomeScreen (Nav Effect): Redirecting - user not authenticated or not a driver.');
+      console.log('DriverHomeScreen (Nav Effect): Redirecting - user not authenticated or not a driver. User:', user);
       navigate('/');
     }
   }, [user, isAuthReady, navigate]);
 
   // Function to fetch all new ride requests from the API
   const fetchNewRideRequests = useCallback(async () => {
-    try {
-      console.log('Fetching all new ride requests...');
-      const rides = await rideService.getNewRides();
-      console.log('New ride requests fetched:', rides);
-      setNewRideRequests(rides);
-
-      // If no modal is currently active, and there are new rides, show the latest one
-      if (!showRideRequestModal && !currentRideRequest && rides.length > 0) {
-        setCurrentRideRequest(rides[0]); // Display the newest one first
-        setShowRideRequestModal(true);
-      }
-    } catch (error) {
-      console.error('Error fetching new ride requests:', error);
-      setAlertMessage(`Error fetching rides: ${error.message}`);
-      setShowAlert(true);
-    }
-  }, [showRideRequestModal, currentRideRequest]); // Depend on modal/current request state for conditional showing
-
-  // This useEffect handles the Socket.IO connection and listeners
-  useEffect(() => {
     if (user && user.token && user.role === 'driver') {
-      console.log('DriverHomeScreen (Socket Effect): User is a driver and token is available.');
+        try {
+            console.log('Fetching all new ride requests...');
+            const rides = await rideService.getNewRides();
+            console.log('New ride requests fetched:', rides);
+            setNewRideRequests(rides);
 
-      // Connect the authenticated socket if it's not already connected or valid
-      if (!socketRef.current || !socketRef.current.connected || socketRef.current.auth.token !== user.token) {
-        console.log('DriverHomeScreen (Socket Effect): Attempting to connect/reconnect authenticated socket.');
-        socketRef.current = connectSocket(user.token);
-        listenersSetRef.current = false; // Reset listeners flag for new socket instance
-      } else {
-        console.log('DriverHomeScreen (Socket Effect): Authenticated socket already connected. Reusing.');
-      }
-
-      const socketInstance = socketRef.current;
-
-      // Only set up listeners if they haven't been set up for this socket instance
-      if (socketInstance && !listenersSetRef.current) {
-        console.log('DriverHomeScreen (Socket Effect): Setting up new Socket.IO listeners.');
-
-        // Listener for successful reconnection (after initial connect or disconnect)
-        socketInstance.on('connect', () => {
-          console.log('DriverHomeScreen: Authenticated socket reconnected. Fetching new rides...');
-          fetchNewRideRequests(); // Refetch pending rides on reconnect
-        });
-
-        socketInstance.on('newRide', (ride) => {
-          console.log('DriverHomeScreen (Socket Effect): >>> New ride request RECEIVED by frontend! <<<', ride);
-          setNewRideRequests(prevRides => {
-            const updatedRides = [ride, ...prevRides.filter(r => r.rideId !== ride.rideId && r._id !== ride.rideId)];
-            // Optionally sort here if needed, but adding to front keeps newest first if API isn't always sorted
-            return updatedRides;
-          });
-          // If no modal is currently open, display this new incoming ride
-          if (!showRideRequestModal) {
-            setCurrentRideRequest(ride);
-            setShowRideRequestModal(true);
-          }
-        });
-
-        socketInstance.on('rideAccepted', (data) => {
-          console.log('DriverHomeScreen (Socket Effect): Ride accepted confirmation:', data);
-          setShowRideRequestModal(false);
-          setCurrentRideRequest(null);
-          // Remove accepted ride from the list
-          setNewRideRequests(prevRides => prevRides.filter(r => r.rideId !== data.rideId && r._id !== data.rideId));
-          setAlertMessage(`Ride ${data.rideId} accepted!`);
-          setShowAlert(true);
-        });
-
-        socketInstance.on('rideCancelled', (data) => {
-          setCurrentRideRequest(prevRequest => {
-            if (prevRequest && (prevRequest.rideId === data.rideId || prevRequest._id === data.rideId)) {
-              setShowRideRequestModal(false);
-              setAlertMessage('The ride request was cancelled by the passenger.');
-              setShowAlert(true);
-              return null;
+            // If no modal is currently open and new rides are available, show the latest one
+            if (!showRideRequestModal && !currentRideRequest && rides.length > 0) {
+                setCurrentRideRequest(rides[0]);
+                setShowRideRequestModal(true);
             }
-            return prevRequest;
-          });
-          setNewRideRequests(prevRides => prevRides.filter(r => r.rideId !== data.rideId && r._id !== data.rideId));
-        });
-
-        socketInstance.on('rideRemoved', (data) => {
-          setCurrentRideRequest(prevRequest => {
-            if (prevRequest && (prevRequest.rideId === data.rideId || prevRequest._id === data.rideId)) {
-              setShowRideRequestModal(false);
-              setAlertMessage('This ride was accepted by another driver.');
-              setShowAlert(true);
-              return null;
-            }
-            return prevRequest;
-          });
-          setNewRideRequests(prevRides => prevRides.filter(r => r.rideId !== data.rideId && r._id !== data.rideId));
-        });
-
-        // Set error listener for auth issues
-        socketInstance.on('connect_error', (err) => {
-          console.error('DriverHomeScreen: Socket connection error:', err.message);
-          setAlertMessage(`Socket connection error: ${err.message}. Please try logging in again.`);
-          setShowAlert(true);
-          if (err.message.includes('Authentication error')) {
-            dispatch(logout());
-            navigate('/');
-          }
-        });
-
-        listenersSetRef.current = true; // Mark that listeners are attached
-      }
-
-      // Initial fetch of new ride requests when component mounts or user becomes driver
-      fetchNewRideRequests();
-
-      // Cleanup function for when the component unmounts or user changes (logout)
-      return () => {
-        if (socketRef.current && listenersSetRef.current) {
-          console.log('DriverHomeScreen (Socket Effect): Cleaning up socket listeners and disconnecting.');
-          socketRef.current.off('connect');
-          socketRef.current.off('newRide');
-          socketRef.current.off('rideAccepted');
-          socketRef.current.off('rideCancelled');
-          socketRef.current.off('rideRemoved');
-          socketRef.current.off('connect_error');
-          listenersSetRef.current = false; // Reset flag
-          disconnectSocket(true); // Disconnect the authenticated socket
-          socketRef.current = null; // Clear ref
+        } catch (error) {
+            console.error('Error fetching new ride requests:', error);
+            setAlertMessage(`Error fetching rides: ${error.message}`);
+            setShowAlert(true);
         }
-      };
     } else {
-      console.log('DriverHomeScreen (Socket Effect): User not a driver or token not available. Ensuring authenticated socket is disconnected.');
-      if (socketRef.current) {
-        disconnectSocket(true);
-        socketRef.current = null;
-        listenersSetRef.current = false; // Reset flag
-      }
+        console.log('fetchNewRideRequests skipped: User not a driver or token not available.');
     }
-  }, [user, dispatch, navigate, fetchNewRideRequests, showRideRequestModal]); // Added showRideRequestModal to dependencies
+  }, [user, showRideRequestModal, currentRideRequest]);
 
-  const handleAcceptRide = () => {
-    const socket = getAuthenticatedSocket();
-    if (socket && currentRideRequest) {
-      console.log('DriverHomeScreen: Emitting acceptRide for ride ID:', currentRideRequest.rideId || currentRideRequest._id);
-      // Use _id from API fetch or rideId from Socket.IO emit
-      socket.emit('acceptRide', { rideId: currentRideRequest.rideId || currentRideRequest._id });
-      setShowRideRequestModal(false);
-      setCurrentRideRequest(null);
-      // Optimistically remove from local state
-      setNewRideRequests(prevRides => prevRides.filter(r => (r.rideId || r._id) !== (currentRideRequest.rideId || currentRideRequest._id)));
+
+  // This useEffect will now only trigger the initial fetch of rides
+  // To get "real-time" updates, you would need to implement a polling mechanism here.
+  useEffect(() => {
+    // CRITICAL: Only proceed if authentication is ready AND user is a driver with a token
+    if (isAuthReady && user && user.token && user.role === 'driver') {
+        console.log('DriverHomeScreen: User is a driver and token is available. Initiating ride fetch.');
+        fetchNewRideRequests(); // Initial fetch
+
     } else {
-      console.warn('DriverHomeScreen: Cannot accept ride, socket not connected or no current request.');
-      setAlertMessage('Cannot accept ride. Please ensure you are connected and a ride request is selected.');
+        console.log('DriverHomeScreen: User not a driver or token not available (auth not ready or role mismatch).');
+    }
+  }, [user, isAuthReady, fetchNewRideRequests]);
+
+  const handleAcceptRide = async () => {
+    if (currentRideRequest) {
+      try {
+        console.log('DriverHomeScreen: Accepting ride ID:', currentRideRequest.rideId || currentRideRequest._id);
+        // Simulate API call success
+        setAlertMessage(`Ride ${currentRideRequest.rideId || currentRideRequest._id} accepted!`);
+        setShowAlert(true);
+        setShowRideRequestModal(false);
+        setCurrentRideRequest(null);
+        setNewRideRequests(prevRides => prevRides.filter(r => (r.rideId || r._id) !== (currentRideRequest.rideId || currentRideRequest._id)));
+
+        fetchNewRideRequests(); // Refresh list after action
+      } catch (error) {
+        console.error('Error accepting ride:', error);
+        setAlertMessage(`Error accepting ride: ${error.message}`);
+        setShowAlert(true);
+      }
+    } else {
+      console.warn('DriverHomeScreen: Cannot accept ride, no current request.');
+      setAlertMessage('Cannot accept ride. No current request selected.');
       setShowAlert(true);
     }
   };
 
-  const handleRejectRide = () => {
-    const socket = getAuthenticatedSocket();
-    if (socket && currentRideRequest) {
-      console.log('DriverHomeScreen: Emitting rejectRide for ride ID:', currentRideRequest.rideId || currentRideRequest._id);
-      socket.emit('rejectRide', { rideId: currentRideRequest.rideId || currentRideRequest._id });
-      setShowRideRequestModal(false);
-      setCurrentRideRequest(null);
-      // Remove rejected ride from the list
-      setNewRideRequests(prevRides => prevRides.filter(r => (r.rideId || r._id) !== (currentRideRequest.rideId || currentRideRequest._id)));
-      setAlertMessage('Ride request rejected.');
-      setShowAlert(true);
+  const handleRejectRide = async () => { // Changed to async
+    if (currentRideRequest) {
+      try {
+    
+        console.log('DriverHomeScreen: Rejecting ride ID:', currentRideRequest.rideId || currentRideRequest._id);
+        // Simulate API call success
+        setAlertMessage('Ride request rejected.');
+        setShowAlert(true);
+        setShowRideRequestModal(false);
+        setCurrentRideRequest(null);
+        setNewRideRequests(prevRides => prevRides.filter(r => (r.rideId || r._id) !== (currentRideRequest.rideId || currentRideRequest._id)));
+
+        fetchNewRideRequests(); // Refresh list after action
+      } catch (error) {
+        console.error('Error rejecting ride:', error);
+        setAlertMessage(`Error rejecting ride: ${error.message}`);
+        setShowAlert(true);
+      }
     } else {
-      console.warn('DriverHomeScreen: Cannot reject ride, socket not connected or no current request.');
-      setAlertMessage('Cannot reject ride. Please ensure you are connected and a ride request is selected.');
+      console.warn('DriverHomeScreen: Cannot reject ride, no current request.');
+      setAlertMessage('Cannot reject ride. No current request selected.');
       setShowAlert(true);
     }
   };
@@ -208,7 +119,6 @@ const DriverHomeScreen = () => {
     navigate('/');
   };
 
-  // Function to handle clicking on a ride from the list
   const handleSelectRide = (ride) => {
     setCurrentRideRequest(ride);
     setShowRideRequestModal(true);
@@ -217,7 +127,7 @@ const DriverHomeScreen = () => {
   if (!user || user.role !== 'driver') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <p className="text-lg text-gray-700">Redirecting to login...</p>
+        <p className="text-lg text-gray-700">Redirecting to login or loading...</p>
       </div>
     );
   }
@@ -237,7 +147,7 @@ const DriverHomeScreen = () => {
             <ul className="space-y-3 text-left">
               {newRideRequests.map(ride => (
                 <li
-                  key={ride.rideId || ride._id} // Use rideId from socket, or _id from API for consistency
+                  key={ride.rideId || ride._id}
                   className="bg-blue-50 p-3 rounded-md shadow-sm cursor-pointer hover:bg-blue-100 transition duration-200"
                   onClick={() => handleSelectRide(ride)}
                 >
@@ -264,9 +174,9 @@ const DriverHomeScreen = () => {
             rideDetails={currentRideRequest}
             onAccept={handleAcceptRide}
             onReject={handleRejectRide}
-            onClose={() => { // Added onClose functionality
+            onClose={() => {
                 setShowRideRequestModal(false);
-                setCurrentRideRequest(null); // Clear the current request if modal is closed
+                setCurrentRideRequest(null);
             }}
           />
         </div>

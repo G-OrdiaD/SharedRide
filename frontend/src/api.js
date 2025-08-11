@@ -50,7 +50,7 @@ export const authService = {
     if (!response.ok) throw new Error(data.message || 'Registration failed');
     return data;
   },
-  getProfile: () => handleRequest('/api/auth/me') // Assuming this endpoint exists and returns user data
+  getProfile: () => handleRequest('/api/auth/me')
 };
 
 export const rideService = {
@@ -65,9 +65,13 @@ export const rideService = {
       method: 'PUT'
     });
   },
-  // NEW: Method to fetch all new ride requests
   getNewRides: () => {
     return handleRequest('/api/rides/new-rides');
+  },
+  acceptRide: (rideId) => {
+    return handleRequest(`/api/rides/${rideId}/accept`, {
+      method: 'PUT'
+    });
   }
 };
 

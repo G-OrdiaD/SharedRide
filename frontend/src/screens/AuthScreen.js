@@ -28,7 +28,8 @@ const AuthScreen = () => {
       // Redirect to home screen after successful login/register
       if (user?.role === 'driver') {
         window.location.replace('/driver');
-      } else if (user?.role === 'passenger') {
+      } 
+      else if (user?.role === 'passenger') {
         window.location.replace('/passenger');
       }
    

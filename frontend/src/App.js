@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { getHelloMessage } from './api';
-
 import './App.css';
 import { Provider, useDispatch, useSelector } from 'react-redux';
 import store from './store';
+import IndexPage from './index';
 import AuthScreen from './screens/AuthScreen';
 import PassengerHomeScreen from './screens/PassengerHomeScreen';
 import DriverHomeScreen from './screens/DriverHomeScreen.js';
@@ -35,7 +35,7 @@ function AppContent() {
 
     }, [dispatch]);
 
-    // CRITICAL: Wait for authentication to be succeeded or failed before rendering main routes
+    // Wait for authentication to be succeeded or failed before rendering main routes
     if (authStatus === 'initializing') {
         return (
             <div className="flex items-center justify-center min-h-screen">
@@ -59,7 +59,8 @@ function AppContent() {
             </div>
 
             <Routes>
-                <Route path="/" element={<AuthScreen />} />
+                <Route path="/" element={<IndexPage />} />
+                <Route path="/auth" element={<AuthScreen />} />
                 <Route path="/passenger" element={<PassengerHomeScreen />} />
                 <Route path="/driver" element={<DriverHomeScreen />} />
                 <Route path="/ride" element={<RideScreen />} />

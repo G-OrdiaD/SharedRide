@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { authService } from '../api'; // Ensure authService is correctly imported
+import { authService } from '../api';
 
 // Registration async thunk
 export const register = createAsyncThunk(
@@ -7,11 +7,10 @@ export const register = createAsyncThunk(
   async (userData, { rejectWithValue }) => {
     try {
       const response = await authService.register(userData);
-      // Store token on successful registration
       if (response.token) {
         localStorage.setItem('jwtToken', response.token);
       }
-      return response.user; // Return user data for the fulfilled state
+      return response; 
     } catch (error) {
       return rejectWithValue(error.message);
     }
@@ -24,11 +23,10 @@ export const login = createAsyncThunk(
   async (credentials, { rejectWithValue }) => {
     try {
       const response = await authService.login(credentials);
-      // Store token on successful login
       if (response.token) {
         localStorage.setItem('jwtToken', response.token);
       }
-      return response.user; // Return user data for the fulfilled state
+      return response;
     } catch (error) {
       return rejectWithValue(error.message);
     }
@@ -45,67 +43,68 @@ export const initializeAuth = createAsyncThunk(
     }
 
     try {
-      // Make an API call to validate the token and get user data
-      // This hits your backend's /api/auth/me endpoint
       const response = await authService.getProfile();
-      return response; // Should return the user object
+      return { user: response, token };
     } catch (error) {
       console.error('Failed to initialize auth from token:', error);
-      // If token is invalid or expired, clear it
       localStorage.removeItem('jwtToken');
-      dispatch(logout()); // Use the existing logout action to clear state
+      dispatch(logout());
       return rejectWithValue(error.message || 'Invalid token');
     }
   }
 );
 
-
 const authSlice = createSlice({
   name: 'auth',
   initialState: {
     user: null,
-    isDriver: false, // This should ideally come from the user object's role
-    status: 'idle', // 'idle', 'loading', 'succeeded', 'failed', 'initializing'
+    isDriver: false,
+    status: 'idle',
     error: null,
-    token: localStorage.getItem('jwtToken') || null, // Initialize token from local storage
+    token: localStorage.getItem('jwtToken') || null,
   },
   reducers: {
     logout: (state) => {
       state.user = null;
       state.isDriver = false;
       state.token = null;
-      localStorage.removeItem('jwtToken'); // Clear token from local storage on logout
+      state.status = 'idle';
+      localStorage.removeItem('jwtToken');
+    },
+    setToken: (state, action) => {
+      state.token = action.payload;
+      localStorage.setItem('jwtToken', action.payload);
     }
   },
   extraReducers: (builder) => {
     builder
-      // Reducers for register thunk
       .addCase(register.pending, (state) => {
         state.status = 'loading';
         state.error = null;
       })
       .addCase(register.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.user = action.payload; // action.payload is now the user object
-        state.isDriver = action.payload?.role === 'driver';
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+        state.isDriver = action.payload.user?.role === 'driver';
         state.error = null;
       })
       .addCase(register.rejected, (state, action) => {
         state.status = 'failed';
         state.user = null;
         state.isDriver = false;
-        state.token = null; // Clear token if registration fails
+        state.token = null;
         state.error = action.payload;
       })
-      // Reducers for login thunk
       .addCase(login.pending, (state) => {
         state.status = 'loading';
         state.error = null;
       })
       .addCase(login.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.user = action.payload;
-        state.isDriver = action.payload?.role === 'driver';
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+        state.isDriver = action.payload.user?.role === 'driver';
         state.error = null;
       })
       .addCase(login.rejected, (state, action) => {
@@ -115,27 +114,26 @@ const authSlice = createSlice({
         state.token = null;
         state.error = action.payload;
       })
-      // Reducers for initializeAuth thunk
       .addCase(initializeAuth.pending, (state) => {
         state.status = 'initializing';
         state.error = null;
       })
       .addCase(initializeAuth.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.user = action.payload;
-        state.isDriver = action.payload?.role === 'driver';
-        state.token = localStorage.getItem('jwtToken'); // Ensure token is set if it was already there
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+        state.isDriver = action.payload.user?.role === 'driver';
         state.error = null;
       })
       .addCase(initializeAuth.rejected, (state, action) => {
         state.status = 'failed';
         state.user = null;
         state.isDriver = false;
-        state.token = null; // Clear token if initialization fails
+        state.token = null;
         state.error = action.payload;
       });
   }
 });
 
-export const { logout } = authSlice.actions; // Export only logout
+export const { logout, setToken } = authSlice.actions;
 export default authSlice.reducer;

@@ -8,7 +8,9 @@ import CustomAlertDialog from '../components/CustomAlertDialog';
 
 const DriverHomeScreen = () => {
   const user = useSelector((state) => state.auth.user);
-  const isAuthReady = useSelector((state) => state.auth.status !== 'idle');
+  const token = useSelector((state) => state.auth.token);
+  const isDriver = useSelector((state) => state.auth.isDriver);
+  const authStatus = useSelector((state) => state.auth.status);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -17,99 +19,96 @@ const DriverHomeScreen = () => {
   const [newRideRequests, setNewRideRequests] = useState([]);
   const [alertMessage, setAlertMessage] = useState('');
   const [showAlert, setShowAlert] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
 
-
-  // This useEffect handles navigation based on auth status
+  // Navigation effect
   useEffect(() => {
-    if (isAuthReady && (!user || user.role !== 'driver')) {
-      console.log('DriverHomeScreen (Nav Effect): Redirecting - user not authenticated or not a driver. User:', user);
+    if (authStatus === 'succeeded' && (!user || !isDriver)) {
+      console.log('Redirecting - user not authenticated or not a driver');
       navigate('/');
     }
-  }, [user, isAuthReady, navigate]);
+  }, [user, authStatus, isDriver, navigate]);
 
-  // Function to fetch all new ride requests from the API
+  // Fetch ride requests with proper error handling
   const fetchNewRideRequests = useCallback(async () => {
-    if (user && user.token && user.role === 'driver') {
-        try {
-            console.log('Fetching all new ride requests...');
-            const rides = await rideService.getNewRides();
-            console.log('New ride requests fetched:', rides);
-            setNewRideRequests(rides);
-
-            // If no modal is currently open and new rides are available, show the latest one
-            if (!showRideRequestModal && !currentRideRequest && rides.length > 0) {
-                setCurrentRideRequest(rides[0]);
-                setShowRideRequestModal(true);
-            }
-        } catch (error) {
-            console.error('Error fetching new ride requests:', error);
-            setAlertMessage(`Error fetching rides: ${error.message}`);
-            setShowAlert(true);
-        }
-    } else {
-        console.log('fetchNewRideRequests skipped: User not a driver or token not available.');
+    if (!token || isFetching) return;
+    
+    setIsFetching(true);
+    try {
+      const response = await rideService.getNewRides();
+      const rides = response.data || response;
+      
+      // Filter only requests from the last 10 minutes
+      const recentRides = rides.filter(ride => {
+        const rideTime = new Date(ride.requestedAt).getTime();
+        return (Date.now() - rideTime) < (10 * 60 * 1000); // 10 minutes
+      });
+      
+      setNewRideRequests(recentRides);
+      
+      // Only show modal if there's a new ride
+      if (!showRideRequestModal && !currentRideRequest && recentRides.length > 0) {
+        setCurrentRideRequest(recentRides[0]);
+        setShowRideRequestModal(true);
+      }
+    } catch (error) {
+      console.error('Error fetching rides:', error);
+      setAlertMessage(error.message || 'Failed to fetch rides');
+      setShowAlert(true);
+      
+      if (error.response?.status === 401) {
+        dispatch(logout());
+        navigate('/login');
+      }
+    } finally {
+      setIsFetching(false);
     }
-  }, [user, showRideRequestModal, currentRideRequest]);
+  }, [token, showRideRequestModal, currentRideRequest, dispatch, navigate, isFetching]);
 
-
-  // This useEffect will now only trigger the initial fetch of rides
-  // To get "real-time" updates, you would need to implement a polling mechanism here.
+  // Fetch rides when auth is ready and setup polling
   useEffect(() => {
-    // CRITICAL: Only proceed if authentication is ready AND user is a driver with a token
-    if (isAuthReady && user && user.token && user.role === 'driver') {
-        console.log('DriverHomeScreen: User is a driver and token is available. Initiating ride fetch.');
-        fetchNewRideRequests(); // Initial fetch
-
-    } else {
-        console.log('DriverHomeScreen: User not a driver or token not available (auth not ready or role mismatch).');
+    if (authStatus === 'succeeded' && isDriver && token) {
+      fetchNewRideRequests();
+      
+      const interval = setInterval(fetchNewRideRequests, 10000);
+      return () => clearInterval(interval);
     }
-  }, [user, isAuthReady, fetchNewRideRequests]);
+  }, [authStatus, isDriver, token, fetchNewRideRequests]);
 
   const handleAcceptRide = async () => {
-    if (currentRideRequest) {
-      try {
-        console.log('DriverHomeScreen: Accepting ride ID:', currentRideRequest.rideId || currentRideRequest._id);
-        // Simulate API call success
-        setAlertMessage(`Ride ${currentRideRequest.rideId || currentRideRequest._id} accepted!`);
-        setShowAlert(true);
-        setShowRideRequestModal(false);
-        setCurrentRideRequest(null);
-        setNewRideRequests(prevRides => prevRides.filter(r => (r.rideId || r._id) !== (currentRideRequest.rideId || currentRideRequest._id)));
-
-        fetchNewRideRequests(); // Refresh list after action
-      } catch (error) {
-        console.error('Error accepting ride:', error);
-        setAlertMessage(`Error accepting ride: ${error.message}`);
-        setShowAlert(true);
-      }
-    } else {
-      console.warn('DriverHomeScreen: Cannot accept ride, no current request.');
-      setAlertMessage('Cannot accept ride. No current request selected.');
+    if (!currentRideRequest) return;
+    
+    try {
+      console.log('Accepting ride:', currentRideRequest.rideId || currentRideRequest._id);
+      setAlertMessage(`Ride ${currentRideRequest.rideId || currentRideRequest._id} accepted!`);
+      setShowAlert(true);
+      setShowRideRequestModal(false);
+      setCurrentRideRequest(null);
+      setNewRideRequests(prev => prev.filter(r => 
+        (r.rideId || r._id) !== (currentRideRequest.rideId || currentRideRequest._id)
+      ));
+    } catch (error) {
+      console.error('Error accepting ride:', error);
+      setAlertMessage(error.message || 'Failed to accept ride');
       setShowAlert(true);
     }
   };
 
-  const handleRejectRide = async () => { // Changed to async
-    if (currentRideRequest) {
-      try {
+  const handleRejectRide = async () => {
+    if (!currentRideRequest) return;
     
-        console.log('DriverHomeScreen: Rejecting ride ID:', currentRideRequest.rideId || currentRideRequest._id);
-        // Simulate API call success
-        setAlertMessage('Ride request rejected.');
-        setShowAlert(true);
-        setShowRideRequestModal(false);
-        setCurrentRideRequest(null);
-        setNewRideRequests(prevRides => prevRides.filter(r => (r.rideId || r._id) !== (currentRideRequest.rideId || currentRideRequest._id)));
-
-        fetchNewRideRequests(); // Refresh list after action
-      } catch (error) {
-        console.error('Error rejecting ride:', error);
-        setAlertMessage(`Error rejecting ride: ${error.message}`);
-        setShowAlert(true);
-      }
-    } else {
-      console.warn('DriverHomeScreen: Cannot reject ride, no current request.');
-      setAlertMessage('Cannot reject ride. No current request selected.');
+    try {
+      console.log('Rejecting ride:', currentRideRequest.rideId || currentRideRequest._id);
+      setAlertMessage('Ride request rejected');
+      setShowAlert(true);
+      setShowRideRequestModal(false);
+      setCurrentRideRequest(null);
+      setNewRideRequests(prev => prev.filter(r => 
+        (r.rideId || r._id) !== (currentRideRequest.rideId || currentRideRequest._id)
+      ));
+    } catch (error) {
+      console.error('Error rejecting ride:', error);
+      setAlertMessage(error.message || 'Failed to reject ride');
       setShowAlert(true);
     }
   };
@@ -124,10 +123,18 @@ const DriverHomeScreen = () => {
     setShowRideRequestModal(true);
   };
 
-  if (!user || user.role !== 'driver') {
+  if (authStatus !== 'succeeded') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <p className="text-lg text-gray-700">Redirecting to login or loading...</p>
+        <p className="text-lg text-gray-700">Authenticating...</p>
+      </div>
+    );
+  }
+
+  if (!user || !isDriver) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <p className="text-lg text-gray-700">Redirecting to login...</p>
       </div>
     );
   }
@@ -141,8 +148,10 @@ const DriverHomeScreen = () => {
 
         <div className="border-t border-gray-200 pt-6 mt-6">
           <h3 className="text-xl font-semibold text-gray-700 mb-4">Available Ride Requests</h3>
-          {newRideRequests.length === 0 ? (
-            <p className="text-gray-500 mb-4">No new ride requests at the moment. Waiting for passengers...</p>
+          {isFetching ? (
+            <p className="text-gray-500 mb-4">Loading rides...</p>
+          ) : newRideRequests.length === 0 ? (
+            <p className="text-gray-500 mb-4">No new ride requests available</p>
           ) : (
             <ul className="space-y-3 text-left">
               {newRideRequests.map(ride => (
@@ -151,9 +160,12 @@ const DriverHomeScreen = () => {
                   className="bg-blue-50 p-3 rounded-md shadow-sm cursor-pointer hover:bg-blue-100 transition duration-200"
                   onClick={() => handleSelectRide(ride)}
                 >
-                  <p className="font-semibold">From: {ride.origin.locationString}</p>
-                  <p>To: {ride.destination.locationString}</p>
-                  <p className="text-sm text-gray-600">Type: <span className="capitalize">{ride.rideType}</span> | Fare: ${ride.fare ? ride.fare.toFixed(2) : 'N/A'}</p>
+                  <p className="font-semibold">From: {ride.origin?.locationString || 'N/A'}</p>
+                  <p>To: {ride.destination?.locationString || 'N/A'}</p>
+                  <p className="text-sm text-gray-600">
+                    Type: <span className="capitalize">{ride.rideType || 'standard'}</span> | 
+                    Fare: £{ride.fare ? ride.fare.toFixed(2) : 'N/A'}
+                  </p>
                 </li>
               ))}
             </ul>
@@ -169,24 +181,24 @@ const DriverHomeScreen = () => {
       </div>
 
       {showRideRequestModal && currentRideRequest && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <RideRequestModal
             rideDetails={currentRideRequest}
             onAccept={handleAcceptRide}
             onReject={handleRejectRide}
             onClose={() => {
-                setShowRideRequestModal(false);
-                setCurrentRideRequest(null);
+              setShowRideRequestModal(false);
+              setCurrentRideRequest(null);
             }}
           />
         </div>
       )}
 
       {showAlert && (
-          <CustomAlertDialog
-              message={alertMessage}
-              onClose={() => setShowAlert(false)}
-          />
+        <CustomAlertDialog
+          message={alertMessage}
+          onClose={() => setShowAlert(false)}
+        />
       )}
     </div>
   );

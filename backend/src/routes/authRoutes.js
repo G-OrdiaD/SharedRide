@@ -7,7 +7,7 @@ const authMiddleware = require('../middleware/authMiddleware'); // Your auth mid
 router.post('/register', authController.register);
 router.post('/login', authController.login);
 
-// Example of a protected route using the middleware
+// Protected routes
 router.get('/me', authMiddleware, authController.getMe); // authMiddleware populates req.user
 
 module.exports = router;

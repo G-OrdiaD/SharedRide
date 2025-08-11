@@ -28,7 +28,6 @@ const geocodeAddress = async (locationString) => {
   }
 };
 
-
 exports.requestRide = async (req, res) => {
   const { origin, destination, rideType } = req.body;
 
@@ -69,9 +68,6 @@ exports.requestRide = async (req, res) => {
 
     await ride.save();
 
-    // Removed: Broadcast to drivers in the 'drivers' room via Socket.IO
-    // Removed: if (req.io) { req.io.to('drivers').emit('newRide', { ... }); }
-
     res.status(201).json({
       _id: ride._id,
       status: ride.status,
@@ -104,10 +100,6 @@ exports.acceptRide = async (req, res) => {
     ride.status = 'MATCHED';
     await ride.save();
 
-    // Removed: Notify the passenger that their ride has been accepted via Socket.IO
-    // Removed: if (req.io) { req.io.to(ride.passenger.toString()).emit('rideAccepted', { ... }); }
-    // Removed: if (req.io) { req.io.to('drivers').emit('rideRemoved', { ... }); }
-
     res.json(ride);
   } catch (err) {
     console.error(err.message);
@@ -115,11 +107,6 @@ exports.acceptRide = async (req, res) => {
   }
 };
 
-/**
- * @desc Complete a ride (typically called by driver)
- * @route PUT /api/rides/:rideId/complete
- * @access Private (Driver)
- */
 exports.completeRide = async (req, res) => {
   try {
     const ride = await Ride.findById(req.params.rideId);
@@ -140,9 +127,6 @@ exports.completeRide = async (req, res) => {
 
     await ride.save();
 
-    // Removed: Notify passenger via Socket.IO
-    // Removed: if (req.io) { req.io.to(ride.passenger.toString()).emit('rideCompleted', { ... }); }
-
     res.json(ride);
   } catch (err) {
     console.error(err.message);
@@ -150,17 +134,22 @@ exports.completeRide = async (req, res) => {
   }
 };
 
-// NEW: Controller function to fetch all new, unaccepted ride requests
 exports.getNewRides = async (req, res) => {
   try {
-    const newRides = await Ride.find({
-      status: 'REQUESTED',
-      driver: { $exists: false }
-    }).sort({ requestedAt: -1 });
+    const tenMintuesAgo = new Date(Date.now() - 10 * 60 * 1000);
 
-    res.json(newRides);
+    const rides = await Ride.find({
+      status: 'REQUESTED',
+      driver: { $exists: false },
+      requestedAt: { $gte: tenMintuesAgo }
+    })
+      .populate('passenger', 'name phone')
+      .select('-__v')
+      .sort({ requestedAt: -1 });
+    
+    res.json(rides);
   } catch (err) {
-    console.error('Error fetching new rides:', err.message);
+    console.error('Get new rides error:', err.message);
     res.status(500).json({ error: "Failed to fetch new rides" });
   }
 };

@@ -16,8 +16,11 @@ const handleRequest = async (endpoint, options = {}) => {
       headers: getHeaders(),
       credentials: 'include'
     });
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: `HTTP ${response.status}: ${response.statusText}` }));
+      const errorData = await response.json().catch(() => ({
+        message: `HTTP ${response.status}: ${response.statusText}`
+      }));
       throw new Error(errorData.message || 'Request failed');
     }
     return await response.json();
@@ -29,10 +32,18 @@ const handleRequest = async (endpoint, options = {}) => {
 
 export const placesService = {
   autocomplete: async (input) => {
-    return handleRequest(`/api/places/autocomplete?input=${encodeURIComponent(input)}`);
+    const data = await handleRequest(`/api/places/autocomplete?input=${encodeURIComponent(input)}`);
+    if (data.status === 'REQUEST_DENIED') {
+      throw new Error('API key rejected by Google');
+    }
+    return data;
   },
   getPlaceDetails: async (placeId) => {
-    return handleRequest(`/api/places/details?place_id=${placeId}`);
+    const data = await handleRequest(`/api/places/details?place_id=${encodeURIComponent(placeId)}`);
+    if (data.status !== 'OK') {
+      throw new Error('Invalid place details response');
+    }
+    return data;
   }
 };
 
@@ -63,10 +74,14 @@ export const authService = {
 };
 
 export const rideService = {
-  requestRide: (originLocation, destinationLocation, rideType) => {
+  requestRide: (origin, destination, rideType) => {
     return handleRequest('/api/rides/request', {
       method: 'POST',
-      body: JSON.stringify({ origin: originLocation, destination: destinationLocation, rideType })
+      body: JSON.stringify({ 
+        origin: origin.location,
+        destination: destination.location,
+        rideType 
+      })
     });
   },
   completeRide: (rideId) => {

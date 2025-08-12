@@ -29,7 +29,7 @@ const DriverHomeScreen = () => {
     }
   }, [user, authStatus, isDriver, navigate]);
 
-  // CORRECTED: Wrapped fetchNewRideRequests in useCallback to create a stable function reference
+  // Wrapped fetchNewRideRequests in useCallback to create a stable function reference
   const fetchNewRideRequests = useCallback(async () => {
     // Return early if no token or already fetching
     if (!token || isFetching) return;

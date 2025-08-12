@@ -1,115 +1,281 @@
 import React, { useState, useEffect } from 'react';
-import { rideService, placesService } from '../api'; // Updated import
+import { rideService, placesService } from '../api';
 
 const RideRequestForm = ({ onSubmit }) => {
-  const [originLocation, setOriginLocation] = useState('');
-  const [destinationLocation, setDestinationLocation] = useState('');
-  const [rideType, setRideType] = useState('standard');
-  const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [originSuggestions, setOriginSuggestions] = useState([]);
-  const [destinationSuggestions, setDestinationSuggestions] = useState([]);
-  const [selectedOrigin, setSelectedOrigin] = useState(null);
-  const [selectedDestination, setSelectedDestination] = useState(null);
+  const [formData, setFormData] = useState({
+    originLocation: '',
+    destinationLocation: '',
+    rideType: 'standard'
+  });
+  const [message, setMessage] = useState(null);
+  const [loading, setLoading] = useState({
+    suggestions: false,
+    submission: false
+  });
+  const [suggestions, setSuggestions] = useState({
+    origin: [],
+    destination: []
+  });
+  const [selectedLocations, setSelectedLocations] = useState({
+    origin: null,
+    destination: null
+  });
 
-  // Effect to fetch origin location suggestions
+  // Debounced suggestion fetcher
   useEffect(() => {
-    const fetchSuggestions = async () => {
-      if (originLocation.length > 2) {
+    const timer = setTimeout(async () => {
+      if (formData.originLocation.length > 2 && 
+          formData.originLocation !== selectedLocations.origin?.description) {
         try {
-          const data = await placesService.autocomplete(originLocation);
-          if (data.predictions) {
-            setOriginSuggestions(data.predictions);
-          }
+          setLoading(prev => ({ ...prev, suggestions: true }));
+          const data = await placesService.autocomplete(formData.originLocation);
+          setSuggestions(prev => ({ ...prev, origin: data.predictions || [] }));
         } catch (error) {
-          console.error('Error fetching origin suggestions:', error);
+          console.error('Origin suggestions error:', error);
+          setMessage({ type: 'error', text: 'Failed to load origin suggestions' });
+        } finally {
+          setLoading(prev => ({ ...prev, suggestions: false }));
         }
       } else {
-        setOriginSuggestions([]);
+        setSuggestions(prev => ({ ...prev, origin: [] }));
       }
-    };
-    fetchSuggestions();
-  }, [originLocation]);
+    }, 300);
 
-  // Effect to fetch destination location suggestions
+    return () => clearTimeout(timer);
+  }, [formData.originLocation, selectedLocations.origin]);
+
   useEffect(() => {
-    const fetchSuggestions = async () => {
-      if (destinationLocation.length > 2) {
+    const timer = setTimeout(async () => {
+      if (formData.destinationLocation.length > 2 && 
+          formData.destinationLocation !== selectedLocations.destination?.description) {
         try {
-          const data = await placesService.autocomplete(destinationLocation);
-          if (data.predictions) {
-            setDestinationSuggestions(data.predictions);
-          }
+          setLoading(prev => ({ ...prev, suggestions: true }));
+          const data = await placesService.autocomplete(formData.destinationLocation);
+          setSuggestions(prev => ({ ...prev, destination: data.predictions || [] }));
         } catch (error) {
-          console.error('Error fetching destination suggestions:', error);
+          console.error('Destination suggestions error:', error);
+          setMessage({ type: 'error', text: 'Failed to load destination suggestions' });
+        } finally {
+          setLoading(prev => ({ ...prev, suggestions: false }));
         }
       } else {
-        setDestinationSuggestions([]);
+        setSuggestions(prev => ({ ...prev, destination: [] }));
       }
-    };
-    fetchSuggestions();
-  }, [destinationLocation]);
+    }, 300);
 
-  const getGeoJsonFromPlaceId = async (placeId) => {
-    try {
-      const data = await placesService.getPlaceDetails(placeId);
-      if (data.result) {
-        const { lat, lng } = data.result.geometry.location;
-        return {
-          locationString: data.result.formatted_address,
-          location: {
-            type: "Point",
-            coordinates: [lng, lat]
-          }
-        };
-      }
-    } catch (error) {
-      console.error('Geocoding error:', error);
-      throw new Error('Failed to geocode place ID.');
-    }
+    return () => clearTimeout(timer);
+  }, [formData.destinationLocation, selectedLocations.destination]);
+
+  const handleLocationSelect = (type, suggestion) => {
+    setFormData(prev => ({
+      ...prev,
+      [`${type}Location`]: suggestion.description
+    }));
+    setSelectedLocations(prev => ({
+      ...prev,
+      [type]: suggestion
+    }));
+    setSuggestions(prev => ({
+      ...prev,
+      [type]: []
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage('');
-    setLoading(true);
+    setMessage(null);
+    setLoading(prev => ({ ...prev, submission: true }));
 
-    if (!selectedOrigin || !selectedDestination) {
-      setMessage({ type: 'error', text: 'Please select both origin and destination locations from the suggestions.' });
-      setLoading(false);
+    if (!selectedLocations.origin || !selectedLocations.destination) {
+      setMessage({
+        type: 'error',
+        text: 'Please select both locations from the suggestions'
+      });
+      setLoading(prev => ({ ...prev, submission: false }));
       return;
     }
 
     try {
-      const originGeoJSON = await getGeoJsonFromPlaceId(selectedOrigin.place_id);
-      const destinationGeoJSON = await getGeoJsonFromPlaceId(selectedDestination.place_id);
+      const [originDetails, destinationDetails] = await Promise.all([
+        placesService.getPlaceDetails(selectedLocations.origin.place_id),
+        placesService.getPlaceDetails(selectedLocations.destination.place_id)
+      ]);
 
       const rideData = {
-        origin: originGeoJSON,
-        destination: destinationGeoJSON,
-        rideType: rideType
+        origin: {
+          locationString: originDetails.result.formatted_address,
+          location: {
+            type: "Point",
+            coordinates: [
+              originDetails.result.geometry.location.lng,
+              originDetails.result.geometry.location.lat
+            ]
+          }
+        },
+        destination: {
+          locationString: destinationDetails.result.formatted_address,
+          location: {
+            type: "Point",
+            coordinates: [
+              destinationDetails.result.geometry.location.lng,
+              destinationDetails.result.geometry.location.lat
+            ]
+          }
+        },
+        rideType: formData.rideType
       };
 
-      const response = await rideService.requestRide(rideData);
-      setMessage({ type: 'success', text: `Ride requested successfully! Ride ID: ${response._id}` });
+      const response = await rideService.requestRide(
+        rideData.origin,
+        rideData.destination,
+        rideData.rideType
+      );
+
+      setMessage({
+        type: 'success',
+        text: `Ride requested successfully! ID: ${response._id}`
+      });
+
       if (onSubmit) onSubmit(rideData);
-      
+
       // Reset form
-      setOriginLocation('');
-      setDestinationLocation('');
-      setSelectedOrigin(null);
-      setSelectedDestination(null);
-      setRideType('standard');
+      setFormData({
+        originLocation: '',
+        destinationLocation: '',
+        rideType: 'standard'
+      });
+      setSelectedLocations({
+        origin: null,
+        destination: null
+      });
     } catch (error) {
-      setMessage({ type: 'error', text: error.message || 'Failed to request ride.' });
+      console.error('Ride request failed:', error);
+      setMessage({
+        type: 'error',
+        text: error.message || 'Failed to request ride'
+      });
     } finally {
-      setLoading(false);
+      setLoading(prev => ({ ...prev, submission: false }));
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md w-full max-w-md mx-auto">
-      {/* ... (keep all your existing JSX exactly the same) ... */}
+      <h3 className="text-xl font-semibold text-gray-800 mb-4">Request a New Ride</h3>
+
+      {message && (
+        <div className={`p-3 mb-4 rounded-md text-sm ${
+          message.type === 'success' 
+            ? 'bg-green-100 text-green-700' 
+            : 'bg-red-100 text-red-700'
+        }`}>
+          {message.text}
+        </div>
+      )}
+
+      {/* Origin Input */}
+      <div className="mb-4 relative">
+        <label className="block text-gray-700 text-sm font-bold mb-2">
+          Origin Location:
+          {loading.suggestions && formData.originLocation.length > 0 && (
+            <span className="ml-2 text-xs text-gray-500">Loading suggestions...</span>
+          )}
+        </label>
+        <input
+          type="text"
+          placeholder="e.g., Wembley Central"
+          value={formData.originLocation}
+          onChange={(e) => setFormData(prev => ({
+            ...prev,
+            originLocation: e.target.value
+          }))}
+          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+          required
+        />
+        {suggestions.origin.length > 0 && (
+          <ul className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+            {suggestions.origin.map((suggestion) => (
+              <li
+                key={suggestion.place_id}
+                onClick={() => handleLocationSelect('origin', suggestion)}
+                className="px-4 py-2 hover:bg-blue-50 cursor-pointer"
+              >
+                {suggestion.description}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Destination Input */}
+      <div className="mb-4 relative">
+        <label className="block text-gray-700 text-sm font-bold mb-2">
+          Destination Location:
+          {loading.suggestions && formData.destinationLocation.length > 0 && (
+            <span className="ml-2 text-xs text-gray-500">Loading suggestions...</span>
+          )}
+        </label>
+        <input
+          type="text"
+          placeholder="e.g., Wembley Stadium"
+          value={formData.destinationLocation}
+          onChange={(e) => setFormData(prev => ({
+            ...prev,
+            destinationLocation: e.target.value
+          }))}
+          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+          required
+        />
+        {suggestions.destination.length > 0 && (
+          <ul className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+            {suggestions.destination.map((suggestion) => (
+              <li
+                key={suggestion.place_id}
+                onClick={() => handleLocationSelect('destination', suggestion)}
+                className="px-4 py-2 hover:bg-blue-50 cursor-pointer"
+              >
+                {suggestion.description}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Ride Type Selection */}
+      <div className="mb-6">
+        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="rideType">
+          Ride Type:
+        </label>
+        <select
+          id="rideType"
+          value={formData.rideType}
+          onChange={(e) => setFormData(prev => ({
+            ...prev,
+            rideType: e.target.value
+          }))}
+          className="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+        >
+          <option value="standard">Standard</option>
+          <option value="pool">Pool</option>
+          <option value="luxury">Luxury</option>
+        </select>
+      </div>
+
+      <button
+        type="submit"
+        disabled={loading.submission}
+        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:shadow-outline w-full transition duration-300 ease-in-out disabled:opacity-75"
+      >
+        {loading.submission ? (
+          <span className="flex items-center justify-center">
+            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Processing...
+          </span>
+        ) : 'Request Ride'}
+      </button>
     </form>
   );
 };

@@ -23,7 +23,6 @@ const app = express();
   }
 })();
 
-// Mongoose connection events
 if (mongooseConnection) {
   mongooseConnection.on('connected', () => {
     console.log('Mongoose default connection open to DB');
@@ -51,29 +50,69 @@ app.use(cors({
 app.use('/api/auth', authRoutes);
 app.use('/api/rides', rideRoutes);
 
-// Add new endpoint for places autocomplete
+// Places API Endpoints
 app.get('/api/places/autocomplete', async (req, res) => {
   try {
     const { input } = req.query;
     if (!input) {
-      return res.status(400).json({ error: 'Input parameter is required' });
+      return res.status(400).json({ error: "Input parameter required" });
     }
 
     const response = await axios.get(
-      `https://maps.googleapis.com/maps/api/place/autocomplete/json`,
+      'https://maps.googleapis.com/maps/api/place/autocomplete/json',
       {
         params: {
           input,
           key: process.env.GOOGLE_MAPS_API_KEY,
-          types: '(cities)'
+          types: 'address',
+          components: 'country:uk'
         }
       }
     );
 
+    if (response.data.status === 'REQUEST_DENIED') {
+      throw new Error('Google API rejected our key');
+    }
+
     res.json(response.data);
   } catch (error) {
-    console.error('Google Places API error:', error.message);
-    res.status(500).json({ error: 'Failed to fetch place suggestions' });
+    console.error('Autocomplete error:', error);
+    res.status(500).json({ 
+      error: "Address suggestions unavailable",
+      debug: process.env.NODE_ENV === 'development' ? error.message : null
+    });
+  }
+});
+
+app.get('/api/places/details', async (req, res) => {
+  try {
+    const { place_id } = req.query;
+    if (!place_id) {
+      return res.status(400).json({ error: "Place ID parameter required" });
+    }
+
+    const response = await axios.get(
+      'https://maps.googleapis.com/maps/api/place/details/json',
+      {
+        params: {
+          place_id,
+          key: process.env.GOOGLE_MAPS_API_KEY,
+          fields: 'formatted_address,geometry'
+        }
+      }
+    );
+
+    if (response.data.status !== 'OK') {
+      throw new Error('Failed to get place details');
+    }
+
+    res.json(response.data);
+  } catch (error) {
+    console.error('Place details error:', error);
+    res.status(500).json({ 
+      error: "Failed to get location details",
+      debug: process.env.NODE_ENV === 'development' ? error.message : null
+    });
   }
 });
 

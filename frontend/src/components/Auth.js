@@ -19,7 +19,7 @@ async function registerUser(name, phone, role, password) {
                 name,
                 phone,
                 role,
-                passwordHash: password // Assuming your backend expects passwordHash directly for now
+                passwordHash: password // Assuming password is already hashed
             }),
         });
 
@@ -36,6 +36,6 @@ async function registerUser(name, phone, role, password) {
         return data; // Return data (e.g., user info, token)
     } catch (error) {
         console.error('Error during registration:', error);
-        throw error; // Re-throw to be handled by calling component/function
+        throw error;
     }
 }

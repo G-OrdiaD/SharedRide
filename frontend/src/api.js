@@ -27,6 +27,15 @@ const handleRequest = async (endpoint, options = {}) => {
   }
 };
 
+export const placesService = {
+  autocomplete: async (input) => {
+    return handleRequest(`/api/places/autocomplete?input=${encodeURIComponent(input)}`);
+  },
+  getPlaceDetails: async (placeId) => {
+    return handleRequest(`/api/places/details?place_id=${placeId}`);
+  }
+};
+
 export const getHelloMessage = async () => handleRequest('/');
 
 export const authService = {

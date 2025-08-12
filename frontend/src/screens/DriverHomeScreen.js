@@ -29,8 +29,9 @@ const DriverHomeScreen = () => {
     }
   }, [user, authStatus, isDriver, navigate]);
 
-  // Fetch ride requests with proper error handling
+  // CORRECTED: Wrapped fetchNewRideRequests in useCallback to create a stable function reference
   const fetchNewRideRequests = useCallback(async () => {
+    // Return early if no token or already fetching
     if (!token || isFetching) return;
     
     setIsFetching(true);
@@ -41,12 +42,12 @@ const DriverHomeScreen = () => {
       // Filter only requests from the last 10 minutes
       const recentRides = rides.filter(ride => {
         const rideTime = new Date(ride.requestedAt).getTime();
-        return (Date.now() - rideTime) < (10 * 60 * 1000); // 10 minutes
+        return (Date.now() - rideTime) < (10 * 60 * 1000); // 10 minutes in ms
       });
       
       setNewRideRequests(recentRides);
       
-      // Only show modal if there's a new ride
+      // Only show modal if there's a new ride and one isn't already open
       if (!showRideRequestModal && !currentRideRequest && recentRides.length > 0) {
         setCurrentRideRequest(recentRides[0]);
         setShowRideRequestModal(true);
@@ -73,7 +74,7 @@ const DriverHomeScreen = () => {
       const interval = setInterval(fetchNewRideRequests, 10000);
       return () => clearInterval(interval);
     }
-  }, [authStatus, isDriver, token, fetchNewRideRequests]);
+  }, [authStatus, isDriver, token, fetchNewRideRequests]); // Dependency array now includes the stable function reference
 
   const handleAcceptRide = async () => {
     if (!currentRideRequest) return;

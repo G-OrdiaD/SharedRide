@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../features/authSlice'; // Import the logout action
 import RideRequestForm from '../components/RideRequestForm'; // Import the RideRequestForm component
+import { rideService } from '../api'; // Import rideService to handle the API call
 
 const PassengerHomeScreen = () => {
   // Access user data from Redux store
@@ -13,7 +14,6 @@ const PassengerHomeScreen = () => {
 
   // Basic route protection: Redirect if not authenticated or not a passenger
   useEffect(() => {
-    // Only check after auth state is no longer 'idle' (meaning initial load/check is done)
     if (isAuthReady && (!user || user.role !== 'passenger')) {
       navigate('/'); // Redirect to AuthScreen if not logged in or not a passenger
     }
@@ -25,13 +25,25 @@ const PassengerHomeScreen = () => {
     navigate('/'); // Redirect to the authentication screen after logout
   };
 
+
+  const handleRideRequest = async (rideData) => {
+      try {
+          const response = await rideService.requestRide(rideData);
+          console.log('Ride requested successfully:', response);
+          // Handle a successful ride request, e.g., show a confirmation message
+      } catch (error) {
+          console.error('Failed to request ride:', error);
+          // Handle errors, e.g., show an error message to the user
+      }
+  };
+
   // Render content only if user is authenticated and is a passenger
   if (!user || user.role !== 'passenger') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
         <p className="text-lg text-gray-700">Redirecting to login...</p>
       </div>
-    ); // Or a loading spinner
+    );
   }
 
   return (
@@ -44,7 +56,7 @@ const PassengerHomeScreen = () => {
         {/* Integrate the RideRequestForm component here */}
         <div className="border-t border-gray-200 pt-6 mt-6">
           <h3 className="text-xl font-semibold text-gray-700 mb-4">Book a Ride</h3>
-          <RideRequestForm /> {/* Render the ride request form */}
+          <RideRequestForm onSubmit={handleRideRequest} /> 
         </div>
 
         <button

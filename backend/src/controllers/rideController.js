@@ -1,55 +1,24 @@
 const Ride = require('../models/Ride');
 const { getFareStrategy } = require('../strategies/fareStrategyFactory');
-const GOOGLE_GEOCODING_API_KEY = process.env.GOOGLE_GEOCODING_API_KEY;
-
-/**
- * Helper function to geocode a location string (address or postcode) into lat/lng.
- * Uses native Node.js fetch.
- * @param {string} locationString - Can be a full address or a postcode.
- * @returns {object} { lat, lng } or throws an error
- */
-const geocodeAddress = async (locationString) => {
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(locationString)}&key=${GOOGLE_GEOCODING_API_KEY}`;
-
-  try {
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (data.status === 'OK' && data.results.length > 0) {
-      const location = data.results[0].geometry.location;
-      return { lat: location.lat, lng: location.lng };
-    } else {
-      console.error('Geocoding API error:', data.status, data.error_message);
-      throw new Error(`Could not find coordinates for: "${locationString}". Please check the address/postcode.`);
-    }
-  } catch (error) {
-    console.error('Error calling Geocoding API:', error.message);
-    throw new Error('Failed to convert address to coordinates. Please try again.');
-  }
-};
+const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
 exports.requestRide = async (req, res) => {
   const { origin, destination, rideType } = req.body;
 
-  if (!origin || typeof origin !== 'string' || !destination || typeof destination !== 'string') {
-    return res.status(400).json({ error: "Origin and destination locations are required as strings." });
+  if (!origin || !destination) {
+    return res.status(400).json({ error: "Origin and destination location objects are required." });
   }
 
   try {
-    const geocodedOrigin = await geocodeAddress(origin);
-    const geocodedDestination = await geocodeAddress(destination);
-
     const ride = new Ride({
       passenger: req.user.id,
       origin: {
-        locationString: origin,
-        lat: geocodedOrigin.lat,
-        lng: geocodedOrigin.lng
+        locationString: origin.locationString,
+        location: origin.location
       },
       destination: {
-        locationString: destination,
-        lat: geocodedDestination.lat,
-        lng: geocodedDestination.lng
+        locationString: destination.locationString,
+        location: destination.location
       },
       rideType: rideType,
       status: 'REQUESTED'
@@ -57,9 +26,10 @@ exports.requestRide = async (req, res) => {
 
     const fareStrategy = getFareStrategy(ride.rideType);
     if (fareStrategy && typeof fareStrategy.calculate === 'function') {
+        // Pass GeoJSON coordinates to the fare strategy
         ride.fare = fareStrategy.calculate(
-            ride.origin.lat, ride.origin.lng,
-            ride.destination.lat, ride.destination.lng
+            ride.origin.location.coordinates,
+            ride.destination.location.coordinates
         );
     } else {
         console.warn(`No valid fare strategy found for type: ${ride.rideType}. Setting fare to 0.`);

@@ -1,11 +1,12 @@
-require('dotenv').config(); // Load environment variables first
+require('dotenv').config();
 
-const http = require('http'); // Import http for creating the server
-const express = require('express');   // Import express for creating the server
-const cors = require ('cors'); // Import CORS for handling cross-origin requests
-const jwt = require('jsonwebtoken'); // Import jwt for token verification
+const http = require('http');
+const express = require('express');
+const cors = require('cors');
+const jwt = require('jsonwebtoken');
+const axios = require('axios');
 const { connectDB, mongooseConnection } = require('./config/db');
-const authRoutes = require('./routes/authRoutes'); 
+const authRoutes = require('./routes/authRoutes');
 const rideRoutes = require('./routes/rideRoutes');
 const { User } = require('./models/User');
 
@@ -22,6 +23,7 @@ const app = express();
   }
 })();
 
+// Mongoose connection events
 if (mongooseConnection) {
   mongooseConnection.on('connected', () => {
     console.log('Mongoose default connection open to DB');
@@ -41,23 +43,47 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://192.168.100.90:3000'], // Keep CORS for HTTP requests
+  origin: ['http://localhost:3000', 'http://192.168.100.90:3000'],
   credentials: true
 }));
-
-const PORT = process.env.PORT || 5000;
-const server = http.createServer(app); // Server is still needed for HTTP
 
 // Define API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/rides', rideRoutes);
 
+// Add new endpoint for places autocomplete
+app.get('/api/places/autocomplete', async (req, res) => {
+  try {
+    const { input } = req.query;
+    if (!input) {
+      return res.status(400).json({ error: 'Input parameter is required' });
+    }
+
+    const response = await axios.get(
+      `https://maps.googleapis.com/maps/api/place/autocomplete/json`,
+      {
+        params: {
+          input,
+          key: process.env.GOOGLE_MAPS_API_KEY,
+          types: '(cities)'
+        }
+      }
+    );
+
+    res.json(response.data);
+  } catch (error) {
+    console.error('Google Places API error:', error.message);
+    res.status(500).json({ error: 'Failed to fetch place suggestions' });
+  }
+});
+
 app.get('/', (req, res) => {
   res.json({ message: 'Backend API is running!' });
 });
 
+const PORT = process.env.PORT || 5000;
+const server = http.createServer(app);
 
-// Start the server
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Access API at: http://localhost:${PORT}`);

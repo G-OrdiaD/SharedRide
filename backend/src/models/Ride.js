@@ -1,6 +1,19 @@
 const mongoose = require('mongoose');
 const { getFareStrategy } = require('../strategies/fareStrategyFactory');
 
+// Define a reusable GeoJSON Point schema
+const PointSchema = new mongoose.Schema({
+  type: {
+    type: String,
+    enum: ['Point'],
+    required: true
+  },
+  coordinates: {
+    type: [Number], // [longitude, latitude]
+    required: true
+  }
+});
+
 const RideSchema = new mongoose.Schema({
   passenger:   {
     type: mongoose.Schema.Types.ObjectId,
@@ -11,17 +24,14 @@ const RideSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
-  // Origin to include locationString, lat, and lng
+  // Use the GeoJSON Point schema for origin and destination
   origin:      {
-    locationString: { type: String, required: true }, // Stores the user's input string (address/postcode)
-    lat: { type: Number, required: true },
-    lng: { type: Number, required: true }
+    locationString: { type: String, required: true },
+    location: PointSchema
   },
-  // Destination to include locationString, lat, and lng
   destination: {
-    locationString: { type: String, required: true }, // Stores the user's input string (address/postcode)
-    lat: { type: Number, required: true },
-    lng: { type: Number, required: true }
+    locationString: { type: String, required: true },
+    location: PointSchema
   },
   rideType:    {
     type: String,
@@ -42,6 +52,9 @@ const RideSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// IMPORTANT: Create a 2dsphere index on the location field for fast geospatial queries
+RideSchema.index({ "origin.location": "2dsphere" });
+
 // Pre-save hook for fare calculation
 RideSchema.pre('save', function(next) {
   if (this.isNew && (this.fare === undefined || this.fare === null)) {
@@ -49,9 +62,6 @@ RideSchema.pre('save', function(next) {
       const strategy = getFareStrategy(this.rideType);
 
       if (strategy && typeof strategy.calculate === 'function') {
-        // Placeholder for fare calculation. In a real app, you'd calculate
-        // distance/time using mapping APIs (e.g., Google Distance Matrix)
-        // and then pass it to the strategy.
         this.fare = this.fare || 0;
       } else {
         console.warn(`No valid fare strategy found for type: ${this.rideType}. Fare not calculated by strategy.`);

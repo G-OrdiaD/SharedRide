@@ -19,18 +19,17 @@ exports.register = async (req, res) => {
       return res.status(400).json({ error: "Email already exists" });
     }
 
-    // Create a new User instance. The pre-save hook in User.js will hash the password.
     user = new User({
       name,
       email,
-      password: password, // CORRECTED: Pass plain password, schema pre-save hook hashes it
+      password: password, 
       phone,
       role
     });
 
     await user.save();
 
-    const token = user.generateJWT(); // Generate JWT using the method defined in User model
+    const token = user.generateJWT(); 
     
     console.log(`[AUTH DEBUG] Registration successful for user: ${user.email}, Role: ${user.role}`);
     res.status(201).json({
@@ -59,7 +58,6 @@ exports.login = async (req, res) => {
 
   try {
     console.log(`[AUTH DEBUG] Login attempt for email: ${email}`);
-    // Select('+passwordHash') is needed because passwordHash is set to select: false by default
     const user = await User.findOne({ email }).select('+passwordHash');
 
     if (!user) {
@@ -68,7 +66,6 @@ exports.login = async (req, res) => {
     }
 
     console.log(`[AUTH DEBUG] User found: ${user.email}. Attempting password verification.`);
-    // Verify password using the method defined in User model
     const isMatch = await user.verifyPassword(password);
 
     if (!isMatch) {
@@ -76,7 +73,7 @@ exports.login = async (req, res) => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    const token = user.generateJWT(); // Generate JWT using the method defined in User model
+    const token = user.generateJWT(); 
     
     console.log(`[AUTH DEBUG] Login successful for user: ${user.email}, Role: ${user.role}`);
     res.json({
@@ -96,6 +93,11 @@ exports.login = async (req, res) => {
 
 // Placeholder for getMe if needed (e.g., for fetching current user profile)
 exports.getMe = async (req, res) => {
+  if (!req.user) {
+    console.log(`[AUTH DEBUG] getMe failed: No token found or token is invalid.`);
+    return res.status(401).json({ error: 'Not authorized' });
+  }
+
   try {
     // req.user is populated by authMiddleware
     const user = await User.findById(req.user.id).select('-passwordHash');
@@ -111,10 +113,10 @@ exports.getMe = async (req, res) => {
   }
 };
 
-// Example of a user-specific controller function (if needed, e.g., for profile updates)
+
 exports.getUserProfile = async (req, res, next) => {
   try {
-    // Assuming req.user is populated by authMiddleware
+    // req.user is populated by authMiddleware
     const user = await User.findById(req.user.id).select('-passwordHash');
     if (!user) {
       return res.status(404).json({ error: 'User not found' });

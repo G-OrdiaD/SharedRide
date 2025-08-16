@@ -1,27 +1,76 @@
 const PaymentFactory = {
-      /**
-       * Creates a payment processor based on the payment type.
-       * This is a placeholder. You'll implement actual payment logic here.
-       * @param {string} paymentType - The type of payment (e.g., 'credit_card', 'paypal').
-       * @param {string} rideId - The ID of the ride.
-       * @param {number} amount - The amount to process.
-       * @returns {Object} An object with a 'process' method.
-       */
-      create: (paymentType, rideId, amount) => {
-        console.log(`PaymentFactory: Creating payment for type: ${paymentType}, ride: ${rideId}, amount: ${amount}`);
-        // In a real application, you would return different payment handlers
-        // based on paymentType (e.g., new CreditCardProcessor(), new PayPalProcessor()).
-        // For now, return a generic placeholder processor.
+  /**
+   * Creates a payment processor instance
+   * @param {string} paymentType - 'card', 'crypto_wallet', or 'cash'
+   * @param {string} rideId - Associated ride ID
+   * @param {number} amount - Payment amount
+   * @returns {object} Processor instance with process() method
+   * @throws {Error} For invalid payment types
+   */
+  create: (paymentType, rideId, amount) => {
+    // Validate input
+    const validTypes = ['card', 'crypto_wallet', 'cash'];
+    if (!validTypes.includes(paymentType)) {
+      throw new Error(`Invalid payment type: ${paymentType}. Valid types are: ${validTypes.join(', ')}`);
+    }
+
+    // Validate amount
+    if (typeof amount !== 'number' || amount <= 0) {
+      throw new Error(`Invalid amount: ${amount}. Must be positive number`);
+    }
+
+    console.log(`[PaymentFactory] Creating ${paymentType} processor for ride ${rideId}, amount: $${amount.toFixed(2)}`);
+
+    // Return appropriate processor
+    switch (paymentType) {
+      case 'card':
         return {
           process: async () => {
-            console.log(`Payment processor for ${paymentType} is simulating processing...`);
-            // Simulate an asynchronous payment process
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            console.log(`Payment for ride ${rideId} of amount $${amount} processed successfully (simulated).`);
-            return { success: true, transactionId: `simulated_tx_${Date.now()}` };
+            console.log(`[CreditCard] Processing $${amount} payment for ride ${rideId}`);
+            await simulateProcessing(1500);
+            return { 
+              success: true, 
+              transactionId: `cc_${Date.now()}`,
+              receiptUrl: `https://payments.example.com/receipts/${rideId}`
+            };
           }
         };
-      }
-    };
 
-    module.exports = PaymentFactory;
+      case 'crypto_wallet':
+        return {
+          process: async () => {
+            console.log(`[Crypto] Processing ${amount} BTC payment for ride ${rideId}`);
+            await simulateProcessing(2000); // Crypto takes longer
+            return {
+              success: true,
+              txHash: `0x${randomHexString(64)}`,
+              confirmationUrl: `https://blockchain.example.com/tx/${rideId}`
+            };
+          }
+        };
+
+      case 'cash':
+        return {
+          process: async () => {
+            console.log(`[Cash] Marking $${amount} cash payment for ride ${rideId}`);
+            await simulateProcessing(500); // Faster processing
+            return {
+              success: true,
+              transactionId: `cash_${Date.now()}`,
+              instructions: 'Payment to be collected in person'
+            };
+          }
+        };
+
+      default:
+      
+        throw new Error(`Unhandled payment type: ${paymentType}`);
+    }
+  }
+};
+
+// Helper functions
+const simulateProcessing = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const randomHexString = (length) => Array.from({length}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+
+module.exports = PaymentFactory;

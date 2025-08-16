@@ -15,7 +15,7 @@ async function registerUser(name, phone, role, password) {
             headers: {
                 'Content-Type': 'application/json', // Tell the server we're sending JSON
             },
-            body: JSON.stringify({ // Convert JavaScript object to JSON string
+            body: JSON.stringify({ 
                 name,
                 phone,
                 role,

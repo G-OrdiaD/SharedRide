@@ -11,7 +11,7 @@ const UserSchema = new mongoose.Schema({
   // The 'role' field will be used by Mongoose as the discriminator key.
   // which specific schema (Passenger, Driver) to apply.
   role:       { type: String, enum: ['passenger', 'driver'], required: true },
-  passwordHash: { type: String, required: true, select: false } 
+  passwordHash: { type: String, required: true, select: false } // Store hashed password, not plain text and never expose it in queries
 }, {
   discriminatorKey: 'role', // This tells Mongoose to use the 'role' field to differentiate sub-models
   timestamps: true // Adds createdAt and updatedAt fields
@@ -41,12 +41,8 @@ UserSchema.methods.generateJWT = function() {
 };
 
 
-// This is the model that other models will "discriminate" from.
-const User = mongoose.model('User', UserSchema);
-// ----------------------------------------------------------------------
+const User = mongoose.model('User', UserSchema); // This is the model that other models will "discriminate" from.
 
-
-// ----------------------------------------------------------------------
 // Define Discriminators for Passenger and Driver
 // These schemas extend the base UserSchema and add specific fields.
 // Mongoose automatically handles the 'role' field based on the discriminator.
@@ -55,7 +51,7 @@ const User = mongoose.model('User', UserSchema);
 const PassengerSchema = new mongoose.Schema({
   // Passenger-specific fields
   paymentMethods: [{
-    type: String, // Example: 'credit_card', 'paypal', etc.
+    type: String, // Example: 'card', 'crypto_wallet', 'cash'
     details: String // Example: last 4 digits, email
   }],
   
@@ -74,12 +70,9 @@ const DriverSchema = new mongoose.Schema({
   currentLocation: { lat: Number, lng: Number }, // Drivers often have dynamic locations
 });
 
-// ----------------------------------------------------------------------
 // Create Discriminator Models
-// These are your actual Passenger and Driver Mongoose models.
+// These are Passenger and Driver Mongoose models.
 const Passenger = User.discriminator('passenger', PassengerSchema);
 const Driver = User.discriminator('driver', DriverSchema);
-// ----------------------------------------------------------------------
 
-// Export the base User model AND the discriminator models
-module.exports = { User, Passenger, Driver };
+module.exports = { User, Passenger, Driver }; // Export the base User model AND the discriminator models

@@ -1,12 +1,13 @@
 const Ride = require('../models/Ride');
 const { getFareStrategy } = require('../strategies/fareStrategyFactory');
-const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+
 
 exports.requestRide = async (req, res) => {
   const { origin, destination, rideType } = req.body;
 
-  if (!origin || !destination) {
-    return res.status(400).json({ error: "Origin and destination location objects are required." });
+  // Validate that the required data exists and has the correct structure.
+  if (!origin || !destination || !origin.location || !destination.location) {
+    return res.status(400).json({ error: "Invalid origin or destination location data." });
   }
 
   try {
@@ -14,27 +15,41 @@ exports.requestRide = async (req, res) => {
       passenger: req.user.id,
       origin: {
         locationString: origin.locationString,
-        location: origin.location
+        // The location field should be a GeoJSON object as per your model
+        location: {
+          type: 'Point',
+          coordinates: [origin.location.lng, origin.location.lat]
+        }
       },
       destination: {
         locationString: destination.locationString,
-        location: destination.location
+        location: {
+          type: 'Point',
+          coordinates: [destination.location.lng, destination.location.lat]
+        }
       },
       rideType: rideType,
       status: 'REQUESTED'
     });
 
     const fareStrategy = getFareStrategy(ride.rideType);
-    if (fareStrategy && typeof fareStrategy.calculate === 'function') {
-        // Pass GeoJSON coordinates to the fare strategy
-        ride.fare = fareStrategy.calculate(
-            ride.origin.location.coordinates,
-            ride.destination.location.coordinates
-        );
-    } else {
-        console.warn(`No valid fare strategy found for type: ${ride.rideType}. Setting fare to 0.`);
-        ride.fare = 0;
+
+    if (!fareStrategy) {
+       throw new Error(`Invalid ride type: ${ride.rideType}`); // Ensure fareStrategy is defined
     }
+   
+    if (!fareStrategy || typeof fareStrategy.calculate !== 'function') {
+      console.warn(`No valid fare strategy found for type: ${ride.rideType}. Setting fare to 0.`);
+      ride.fare = 0;
+    } else {
+
+      // Calculate fare using the strategy's calculate method
+      ride.fare = fareStrategy.calculate( // Pass GeoJSON coordinates to the fare strategy
+        ride.origin.location.coordinates,
+        ride.destination.location.coordinates
+      );
+    }
+    
 
     await ride.save();
 
@@ -47,8 +62,8 @@ exports.requestRide = async (req, res) => {
       fare: ride.fare
     });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: err.message || "Failed to request ride" });
+    console.error(`Error in requestRide: ${err.message}`);
+    res.status(500).json({ error: "Failed to request ride" });
   }
 };
 

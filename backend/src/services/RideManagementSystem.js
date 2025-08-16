@@ -39,7 +39,7 @@ class RideManagementSystem extends EventEmitter {
     try {
       await newRide.save();
       this.activeRides.set(newRide._id.toString(), newRide);
-      this.emit('rideCreated', newRide);
+      this.emit('ride:created', newRide);
       return newRide;
     } catch (error) {
       console.error('[RideManagement] Error creating ride:', error);
@@ -85,7 +85,7 @@ class RideManagementSystem extends EventEmitter {
       
       await Promise.all([ride.save(), driver.save()]);
       
-      this.emit('driverAssigned', ride, driver);
+      this.emit('driver:Assigned', ride, driver);
       return ride;
     } catch (error) {
       console.error('[RideManagement] Error assigning driver:', error);

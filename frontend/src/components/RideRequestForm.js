@@ -21,49 +21,74 @@ const RideRequestForm = ({ onSubmit }) => {
     destination: null
   });
 
-  // Debounced suggestion fetcher
   useEffect(() => {
-    const timer = setTimeout(async () => {
-      if (formData.originLocation.length > 2 && 
-          formData.originLocation !== selectedLocations.origin?.description) {
-        try {
-          setLoading(prev => ({ ...prev, suggestions: true }));
-          const data = await placesService.autocomplete(formData.originLocation);
-          setSuggestions(prev => ({ ...prev, origin: data.predictions || [] }));
-        } catch (error) {
-          console.error('Origin suggestions error:', error);
-          setMessage({ type: 'error', text: 'Failed to load origin suggestions' });
-        } finally {
-          setLoading(prev => ({ ...prev, suggestions: false }));
-        }
-      } else {
-        setSuggestions(prev => ({ ...prev, origin: [] }));
+    const fetchSuggestions = async (type, query) => {
+      if (query.length < 3) {
+        setSuggestions(prev => ({ ...prev, [type]: [] }));
+        return;
+      }
+
+      setLoading(prev => ({ ...prev, suggestions: true }));
+      
+      try {
+        const data = await placesService.autocomplete(query);
+        setSuggestions(prev => ({
+          ...prev,
+          [type]: data.predictions || []
+        }));
+      } catch (error) {
+        console.error(`${type} suggestions error:`, error);
+        setMessage({
+          type: 'error',
+          text: 'Failed to load address suggestions'
+        });
+      } finally {
+        setLoading(prev => ({ ...prev, suggestions: false }));
+      }
+    };
+
+    const debounceTimer = setTimeout(() => {
+      if (formData.originLocation !== selectedLocations.origin?.description) {
+        fetchSuggestions('origin', formData.originLocation);
       }
     }, 300);
 
-    return () => clearTimeout(timer);
+    return () => clearTimeout(debounceTimer);
   }, [formData.originLocation, selectedLocations.origin]);
 
   useEffect(() => {
-    const timer = setTimeout(async () => {
-      if (formData.destinationLocation.length > 2 && 
-          formData.destinationLocation !== selectedLocations.destination?.description) {
-        try {
-          setLoading(prev => ({ ...prev, suggestions: true }));
-          const data = await placesService.autocomplete(formData.destinationLocation);
-          setSuggestions(prev => ({ ...prev, destination: data.predictions || [] }));
-        } catch (error) {
-          console.error('Destination suggestions error:', error);
-          setMessage({ type: 'error', text: 'Failed to load destination suggestions' });
-        } finally {
-          setLoading(prev => ({ ...prev, suggestions: false }));
-        }
-      } else {
-        setSuggestions(prev => ({ ...prev, destination: [] }));
+    const fetchSuggestions = async (type, query) => {
+      if (query.length < 3) {
+        setSuggestions(prev => ({ ...prev, [type]: [] }));
+        return;
+      }
+
+      setLoading(prev => ({ ...prev, suggestions: true }));
+      
+      try {
+        const data = await placesService.autocomplete(query);
+        setSuggestions(prev => ({
+          ...prev,
+          [type]: data.predictions || []
+        }));
+      } catch (error) {
+        console.error(`${type} suggestions error:`, error);
+        setMessage({
+          type: 'error',
+          text: 'Failed to load address suggestions'
+        });
+      } finally {
+        setLoading(prev => ({ ...prev, suggestions: false }));
+      }
+    };
+
+    const debounceTimer = setTimeout(() => {
+      if (formData.destinationLocation !== selectedLocations.destination?.description) {
+        fetchSuggestions('destination', formData.destinationLocation);
       }
     }, 300);
 
-    return () => clearTimeout(timer);
+    return () => clearTimeout(debounceTimer);
   }, [formData.destinationLocation, selectedLocations.destination]);
 
   const handleLocationSelect = (type, suggestion) => {
@@ -82,82 +107,77 @@ const RideRequestForm = ({ onSubmit }) => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setMessage(null);
-    setLoading(prev => ({ ...prev, submission: true }));
+  e.preventDefault();
+  setMessage(null);
+  setLoading(prev => ({ ...prev, submission: true }));
 
-    if (!selectedLocations.origin || !selectedLocations.destination) {
-      setMessage({
-        type: 'error',
-        text: 'Please select both locations from the suggestions'
-      });
-      setLoading(prev => ({ ...prev, submission: false }));
-      return;
+  if (!selectedLocations.origin || !selectedLocations.destination) {
+    setMessage({
+      type: 'error',
+      text: 'Please select both locations from the dropdown suggestions'
+    });
+    setLoading(prev => ({ ...prev, submission: false }));
+    return;
+  }
+
+  try {
+    const [originDetails, destinationDetails] = await Promise.all([
+      placesService.getPlaceDetails(selectedLocations.origin.place_id),
+      placesService.getPlaceDetails(selectedLocations.destination.place_id)
+    ]);
+
+    if (!originDetails.result || !destinationDetails.result) {
+      throw new Error('Invalid location details received');
     }
+    
+    // Corrected: The front-end now sends lat/lng as properties.
+    const rideData = {
+      origin: {
+        locationString: originDetails.result.formatted_address,
+        location: {
+          lat: originDetails.result.geometry.location.lat,
+          lng: originDetails.result.geometry.location.lng
+        }
+      },
+      destination: {
+        locationString: destinationDetails.result.formatted_address,
+        location: {
+          lat: destinationDetails.result.geometry.location.lat,
+          lng: destinationDetails.result.geometry.location.lng
+        }
+      },
+      rideType: formData.rideType
+    };
 
-    try {
-      const [originDetails, destinationDetails] = await Promise.all([
-        placesService.getPlaceDetails(selectedLocations.origin.place_id),
-        placesService.getPlaceDetails(selectedLocations.destination.place_id)
-      ]);
-
-      const rideData = {
-        origin: {
-          locationString: originDetails.result.formatted_address,
-          location: {
-            type: "Point",
-            coordinates: [
-              originDetails.result.geometry.location.lng,
-              originDetails.result.geometry.location.lat
-            ]
-          }
-        },
-        destination: {
-          locationString: destinationDetails.result.formatted_address,
-          location: {
-            type: "Point",
-            coordinates: [
-              destinationDetails.result.geometry.location.lng,
-              destinationDetails.result.geometry.location.lat
-            ]
-          }
-        },
-        rideType: formData.rideType
-      };
-
-      const response = await rideService.requestRide(
-        rideData.origin,
-        rideData.destination,
-        rideData.rideType
-      );
-
-      setMessage({
-        type: 'success',
-        text: `Ride requested successfully! ID: ${response._id}`
-      });
-
-      if (onSubmit) onSubmit(rideData);
-
-      // Reset form
-      setFormData({
-        originLocation: '',
-        destinationLocation: '',
-        rideType: 'standard'
-      });
-      setSelectedLocations({
-        origin: null,
-        destination: null
-      });
-    } catch (error) {
-      console.error('Ride request failed:', error);
-      setMessage({
-        type: 'error',
-        text: error.message || 'Failed to request ride'
-      });
-    } finally {
-      setLoading(prev => ({ ...prev, submission: false }));
-    }
-  };
+    console.log('Submitting ride data:', rideData);
+    const response = await rideService.requestRide(rideData);
+    
+    setMessage({
+      type: 'success',
+      text: `Ride requested! ID: ${response._id}`
+    });
+    
+    if (onSubmit) onSubmit(rideData);
+    
+    setFormData({
+      originLocation: '',
+      destinationLocation: '',
+      rideType: 'standard'
+    });
+    setSelectedLocations({
+      origin: null,
+      destination: null
+    });
+  } catch (error) {
+    console.error('Ride request failed:', error);
+    setMessage({
+      type: 'error',
+      text: error.message || 'Failed to request ride'
+    });
+  } finally {
+    setLoading(prev => ({ ...prev, submission: false }));
+  }
+};
 
   return (
     <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md w-full max-w-md mx-auto">
@@ -173,7 +193,6 @@ const RideRequestForm = ({ onSubmit }) => {
         </div>
       )}
 
-      {/* Origin Input */}
       <div className="mb-4 relative">
         <label className="block text-gray-700 text-sm font-bold mb-2">
           Origin Location:
@@ -207,7 +226,6 @@ const RideRequestForm = ({ onSubmit }) => {
         )}
       </div>
 
-      {/* Destination Input */}
       <div className="mb-4 relative">
         <label className="block text-gray-700 text-sm font-bold mb-2">
           Destination Location:
@@ -241,7 +259,6 @@ const RideRequestForm = ({ onSubmit }) => {
         )}
       </div>
 
-      {/* Ride Type Selection */}
       <div className="mb-6">
         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="rideType">
           Ride Type:

@@ -130,20 +130,26 @@ const RideRequestForm = ({ onSubmit }) => {
       throw new Error('Invalid location details received');
     }
     
-    // Corrected: The front-end now sends lat/lng as properties.
+    // The front-end sends GeoJSON 'coordinates' to match the back-end.
     const rideData = {
       origin: {
         locationString: originDetails.result.formatted_address,
         location: {
-          lat: originDetails.result.geometry.location.lat,
-          lng: originDetails.result.geometry.location.lng
+          type: "Point",
+          coordinates: [
+            originDetails.result.geometry.location.lng,
+            originDetails.result.geometry.location.lat
+          ]
         }
       },
       destination: {
         locationString: destinationDetails.result.formatted_address,
         location: {
-          lat: destinationDetails.result.geometry.location.lat,
-          lng: destinationDetails.result.geometry.location.lng
+          type: "Point",
+          coordinates: [
+            destinationDetails.result.geometry.location.lng,
+            destinationDetails.result.geometry.location.lat
+          ]
         }
       },
       rideType: formData.rideType
@@ -152,22 +158,7 @@ const RideRequestForm = ({ onSubmit }) => {
     console.log('Submitting ride data:', rideData);
     const response = await rideService.requestRide(rideData);
     
-    setMessage({
-      type: 'success',
-      text: `Ride requested! ID: ${response._id}`
-    });
     
-    if (onSubmit) onSubmit(rideData);
-    
-    setFormData({
-      originLocation: '',
-      destinationLocation: '',
-      rideType: 'standard'
-    });
-    setSelectedLocations({
-      origin: null,
-      destination: null
-    });
   } catch (error) {
     console.error('Ride request failed:', error);
     setMessage({

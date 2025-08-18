@@ -38,19 +38,47 @@ const rideService = {
    * @param {Object} rideData - { origin, destination, rideType }
    * @returns {Promise<Object>} Created ride object
    */
-  requestRide: async (rideData) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/rides`, {
-        method: 'POST',
-        headers: getAuthHeader(),
-        body: JSON.stringify(rideData)
-      });
-      return handleResponse(response);
-    } catch (error) {
-      console.error('[RideService] requestRide error:', error);
-      throw error;
-    }
-  },
+  // Update the requestRide method to ensure proper data structure
+requestRide: async (rideData) => {
+  try {
+    // Validate coordinates before sending
+    const validateCoords = (coords) => {
+      if (!Array.isArray(coords) || coords.length !== 2 || 
+          typeof coords[0] !== 'number' || typeof coords[1] !== 'number') {
+        throw new Error('Invalid coordinates format');
+      }
+    };
+
+    validateCoords(rideData.origin.location.coordinates);
+    validateCoords(rideData.destination.location.coordinates);
+
+    const response = await fetch(`${API_BASE_URL}/rides/request`, {
+      method: 'POST',
+      headers: getAuthHeader(),
+      body: JSON.stringify({
+        origin: {
+          locationString: rideData.origin.locationString,
+          location: {
+            lat: rideData.origin.location.coordinates[1],
+            lng: rideData.origin.location.coordinates[0]
+          }
+        },
+        destination: {
+          locationString: rideData.destination.locationString,
+          location: {
+            lat: rideData.destination.location.coordinates[1],
+            lng: rideData.destination.location.coordinates[0]
+          }
+        },
+        rideType: rideData.rideType
+      })
+    });
+    return handleResponse(response);
+  } catch (error) {
+    console.error('[RideService] requestRide error:', error);
+    throw error;
+  }
+},
 
   /**
    * Accept a ride request (driver)

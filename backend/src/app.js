@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config(); // Load environment variables first
 
 const http = require('http');
 const express = require('express');
@@ -120,10 +120,10 @@ app.get('/', (req, res) => {
   res.json({ message: 'Backend API is running!' });
 });
 
-const PORT = process.env.PORT || 5000;
-const server = http.createServer(app);
+const PORT = process.env.PORT || 5000; // Default to 5000 if PORT is not set
+const server = http.createServer(app); // Create HTTP server with Express app
 
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Access API at: http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`); // Log the server port
+  console.log(`Access API at: http://localhost:${PORT}`); // Log the API access URL
 });

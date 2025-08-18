@@ -1,7 +1,32 @@
 const mongoose = require('mongoose');
 const { getFareStrategy } = require('../strategies/fareStrategyFactory');
+const crypto = require('crypto');
+const config = require('../config/db');
 
-// Define a reusable GeoJSON Point schema
+
+// Encryption utilities directly in the model file
+function encryptCoordinates(coords) {
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv('aes-256-cbc', 
+    Buffer.from(config.locationEncryptionKey), iv);
+  let encrypted = cipher.update(JSON.stringify(coords));
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return {
+    iv: iv.toString('hex'),
+    content: encrypted.toString('hex')
+  };
+}
+
+function decryptCoordinates(encrypted) {
+  const iv = Buffer.from(encrypted.iv, 'hex');
+  const content = Buffer.from(encrypted.content, 'hex');
+  const decipher = crypto.createDecipheriv('aes-256-cbc', 
+    Buffer.from(config.locationEncryptionKey), iv);
+  let decrypted = decipher.update(content);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  return JSON.parse(decrypted.toString());
+}
+
 const PointSchema = new mongoose.Schema({
   type: {
     type: String,
@@ -9,23 +34,26 @@ const PointSchema = new mongoose.Schema({
     required: true
   },
   coordinates: {
-    type: [Number], // [longitude, latitude]
+    type: mongoose.Schema.Types.Mixed, // Mixed type for encrypted coordinates
     required: true
+  },
+  encrypted: {
+    type: Boolean,
+    default: false
   }
 });
 
 const RideSchema = new mongoose.Schema({
-  passenger:   {
+  passenger: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  driver:      {
+  driver: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
-  // Use the GeoJSON Point schema for origin and destination
-  origin:      {
+  origin: {
     locationString: { type: String, required: true },
     location: PointSchema
   },
@@ -33,46 +61,77 @@ const RideSchema = new mongoose.Schema({
     locationString: { type: String, required: true },
     location: PointSchema
   },
-  rideType:    {
+  rideType: {
     type: String,
     enum: ['standard', 'pool', 'luxury'],
     default: 'standard'
   },
-  status:      {
+  status: {
     type: String,
     enum: ['REQUESTED', 'MATCHED', 'ONGOING', 'COMPLETED', 'CANCELLED'],
     default: 'REQUESTED'
   },
-  fare:        Number,
+  fare: Number,
+  surgeMultiplier: { // Surge pricing field
+    type: Number,
+    default: 1.0
+  },
   requestedAt: {
     type: Date,
     default: Date.now
-  }
+  },
+  events: [{ // Event logging directly in Ride
+    type: {
+      type: String,
+      required: true
+    },
+    timestamp: {
+      type: Date,
+      default: Date.now
+    },
+    data: mongoose.Schema.Types.Mixed
+  }]
 }, {
   timestamps: true
 });
 
-// IMPORTANT: Create a 2dsphere index on the location field for fast geospatial queries
-RideSchema.index({ "origin.location": "2dsphere" });
-
-// Pre-save hook for fare calculation
+// Pre-save hook to encrypt coordinates
 RideSchema.pre('save', function(next) {
-  if (this.isNew && (this.fare === undefined || this.fare === null)) {
-    try {
-      const strategy = getFareStrategy(this.rideType);
+   // Validate coordinates before encrypting
+  const validatecoords = (coords) => {
+    if (!Array.isArray(coords)) return false;
+    return coords.every(coord => typeof coord === 'number' && !isNaN(coord));
+  };
 
-      if (strategy && typeof strategy.calculate === 'function') {
-        this.fare = this.fare || 0;
-      } else {
-        console.warn(`No valid fare strategy found for type: ${this.rideType}. Fare not calculated by strategy.`);
-        this.fare = this.fare || 0;
-      }
-    } catch (error) {
-      console.error('Error during fare calculation in pre-save hook:', error);
-      return next(error);
-    }
+  if (this.isModified('origin.location.coordinates') && !this.origin.location.encrypted) {
+    const encrypted = encryptCoordinates(this.origin.location.coordinates);
+    this.origin.location.coordinates = encrypted;
+    this.origin.location.encrypted = true;
+  }
+  
+  if (this.isModified('destination.location.coordinates') && !this.destination.location.encrypted) {
+    const encrypted = encryptCoordinates(this.destination.location.coordinates);
+    this.destination.location.coordinates = encrypted;
+    this.destination.location.encrypted = true;
   }
   next();
 });
+
+// Method to decrypt location data when needed
+RideSchema.methods.getDecryptedLocations = function() {
+  const ride = this.toObject();
+  
+  if (ride.origin.location.encrypted) {
+    ride.origin.location.coordinates = decryptCoordinates(ride.origin.location.coordinates);
+    ride.origin.location.encrypted = false;
+  }
+  
+  if (ride.destination.location.encrypted) {
+    ride.destination.location.coordinates = decryptCoordinates(ride.destination.location.coordinates);
+    ride.destination.location.encrypted = false;
+  }
+  
+  return ride;
+};
 
 module.exports = mongoose.model('Ride', RideSchema);

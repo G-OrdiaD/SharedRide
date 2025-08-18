@@ -71,17 +71,19 @@ export const authService = {
     return data;
   },
   getProfile: () => handleRequest('/api/auth/me')
-};
+  };
 
 export const rideService = {
   requestRide: (rideData) => {
-    // ONLY CHANGE: Added this validation block
-    if (!rideData?.origin?.location?.coordinates || 
-        !rideData?.destination?.location?.coordinates ||
-        !Array.isArray(rideData.origin.location.coordinates) ||
-        !Array.isArray(rideData.destination.location.coordinates)) {
-      throw new Error('Invalid location coordinates format');
-    }
+
+   // Validate coordinates before sending
+    // if (!rideData?.origin?.location?.coordinates || 
+    //   !rideData?.destination?.location?.coordinates || 
+    //   !Array.isArray(rideData.origin.location.coordinates) ||
+    //   !Array.isArray(rideData.destination.location.coordinates)) { 
+    // console.log('Requesting ride with data:', rideData);
+    // throw new Error(`Invalid location coordinates format: ${JSON.stringify(rideData)}`); 
+    // }
 
     // Original implementation remains unchanged below
     return handleRequest('/api/rides/request', {

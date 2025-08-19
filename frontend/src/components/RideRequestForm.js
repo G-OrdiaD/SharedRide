@@ -106,7 +106,7 @@ const RideRequestForm = ({ onSubmit }) => {
     }));
   };
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
   e.preventDefault();
   setMessage(null);
   setLoading(prev => ({ ...prev, submission: true }));
@@ -130,7 +130,6 @@ const RideRequestForm = ({ onSubmit }) => {
       throw new Error('Invalid location details received');
     }
     
-    // The front-end sends GeoJSON 'coordinates' to match the back-end.
     const rideData = {
       origin: {
         locationString: originDetails.result.formatted_address,
@@ -157,7 +156,7 @@ const RideRequestForm = ({ onSubmit }) => {
 
     console.log('Submitting ride data:', rideData);
     const response = await rideService.requestRide(rideData);
-    
+    onSubmit(response);
     
   } catch (error) {
     console.error('Ride request failed:', error);

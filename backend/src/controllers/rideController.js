@@ -1,85 +1,69 @@
-const express = require('express');
-const router = express.Router();
 const Ride = require('../models/Ride');
 const { getFareStrategy } = require('../strategies/fareStrategyFactory');
-const rateLimit = require('express-rate-limit');
 const RideManagementSystem = require('../services/RideManagementSystem');
 
-
-const rideRequestLimiter = rateLimit({ 
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  message: 'Too many ride requests from this IP, please try again later'
-});
-
-
-router.post('/request', rideRequestLimiter, async (req, res) => {
+exports.requestRide = async (req, res) => {
   try {
     const { origin, destination, rideType } = req.body;
-    
-    // Enhanced validation
-    if (!origin?.location || !destination?.location) {
-      return res.status(400).json({ 
-        error: "Invalid location data",
-        details: {
-          origin: !origin?.location ? "Missing origin location" : null,
-          destination: !destination?.location ? "Missing destination location" : null
-        }
+
+    // Validate required fields
+    const errors = {};
+    if (!origin?.locationString) errors.origin = "Missing origin description";
+    if (!destination?.locationString) errors.destination = "Missing destination description";
+    if (!origin?.location?.coordinates) errors.originCoords = "Missing origin coordinates";
+    if (!destination?.location?.coordinates) errors.destinationCoords = "Missing destination coordinates";
+
+    if (Object.keys(errors).length > 0) {
+      return res.status(400).json({
+        error: "Validation failed",
+        details: errors
       });
     }
 
-    // Validate coordinates are numbers
-    const { lat: originLat, lng: originLng } = origin.location;
-    const { lat: destLat, lng: destLng } = destination.location;
-    
-    if ([originLat, originLng, destLat, destLng].some(coord => 
-      typeof coord !== 'number' || isNaN(coord))) {
-      return res.status(400).json({ 
-        error: "Invalid coordinates",
-        details: {
-          origin: {
-            lat: typeof originLat,
-            lng: typeof originLng
-          },
-          destination: {
-            lat: typeof destLat,
-            lng: typeof destLng
-          }
+    // Create ride with properly formatted data
+    const ride = new Ride({
+      passenger: req.user.id,
+      origin: {
+        locationString: origin.locationString,
+        location: {
+          type: 'Point',
+          coordinates: [
+            parseFloat(origin.location.coordinates[0]), // lng
+            parseFloat(origin.location.coordinates[1])  // lat
+          ]
         }
-      });
-    }
-
-    const rideManager = RideManagementSystem.getInstance();
-    const ride = await rideManager.createRide(
-      req.user.id,
-      {
-        locationString: origin.locationString || '',
-        coordinates: [originLng, originLat]
       },
-      {
-        locationString: destination.locationString || '',
-        coordinates: [destLng, destLat]
+      destination: {
+        locationString: destination.locationString,
+        location: {
+          type: 'Point',
+          coordinates: [
+            parseFloat(destination.location.coordinates[0]), // lng
+            parseFloat(destination.location.coordinates[1])  // lat
+          ]
+        }
       },
-      rideType
-    );
+      rideType: rideType || 'standard',
+      status: 'REQUESTED' // Explicitly set to match enum
+    });
 
-    res.status(201).json(await ride.getDecryptedLocations());
+    await ride.save();
+    res.status(201).json(ride);
+
   } catch (error) {
     console.error('Ride request error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: "Failed to process ride request",
-      debug: process.env.NODE_ENV === 'development' ? error.message : null
+      details: process.env.NODE_ENV === 'development' ? error.message : null
     });
   }
-});
+};
 
-// Event logging
-router.post('/:rideId/accept', async (req, res) => {
+exports.acceptRide = async (req, res) => {
   try {
     const rideManager = RideManagementSystem.getInstance();
     const ride = await rideManager.assignDriver(req.params.rideId, req.user.id);
     
-    // Log event
     ride.events.push({
       type: 'driver_accepted',
       timestamp: new Date(),
@@ -92,10 +76,9 @@ router.post('/:rideId/accept', async (req, res) => {
     console.error('Accept ride error:', error);
     res.status(500).json({ error: error.message });
   }
-});
+};
 
-
-exports.acceptRide = async (req, res) => {
+exports.acceptRideLegacy = async (req, res) => {
   try {
     const ride = await Ride.findById(req.params.rideId);
     if (!ride) {
@@ -137,7 +120,6 @@ exports.completeRide = async (req, res) => {
 
     ride.status = 'COMPLETED';
     ride.endTime = new Date();
-
     await ride.save();
 
     res.json(ride);

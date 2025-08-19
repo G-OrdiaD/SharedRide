@@ -43,56 +43,50 @@ const PointSchema = new mongoose.Schema({
   }
 });
 
+
 const RideSchema = new mongoose.Schema({
-  passenger: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  driver: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
+
   origin: {
-    locationString: { type: String, required: true },
-    location: PointSchema
+    locationString: { 
+      type: String, 
+      required: true 
+    },
+    location: {
+      type: {
+        type: String,
+        enum: ['Point'],
+        default: 'Point',
+        required: true
+      },
+      coordinates: {
+        type: [Number], // [lng, lat]
+        required: true
+      }
+    }
   },
   destination: {
-    locationString: { type: String, required: true },
-    location: PointSchema
-  },
-  rideType: {
-    type: String,
-    enum: ['standard', 'pool', 'luxury'],
-    default: 'standard'
+    locationString: { 
+      type: String, 
+      required: true 
+    },
+    location: {
+      type: {
+        type: String,
+        enum: ['Point'],
+        default: 'Point',
+        required: true
+      },
+      coordinates: {
+        type: [Number], // [lng, lat]
+        required: true
+      }
+    }
   },
   status: {
     type: String,
     enum: ['REQUESTED', 'MATCHED', 'ONGOING', 'COMPLETED', 'CANCELLED'],
     default: 'REQUESTED'
   },
-  fare: Number,
-  surgeMultiplier: { // Surge pricing field
-    type: Number,
-    default: 1.0
-  },
-  requestedAt: {
-    type: Date,
-    default: Date.now
-  },
-  events: [{ // Event logging directly in Ride
-    type: {
-      type: String,
-      required: true
-    },
-    timestamp: {
-      type: Date,
-      default: Date.now
-    },
-    data: mongoose.Schema.Types.Mixed
-  }]
-}, {
-  timestamps: true
 });
 
 // Pre-save hook to encrypt coordinates

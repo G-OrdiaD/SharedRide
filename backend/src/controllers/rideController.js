@@ -1,8 +1,8 @@
-const Ride = require('../models/Ride');
+const Ride = require('../models/Ride'); 
 const { getFareStrategy } = require('../strategies/fareStrategyFactory');
 const RideManagementSystem = require('../services/RideManagementSystem');
 
-exports.requestRide = async (req, res) => {
+exports.requestRide = async (req, res) => { // Handle ride request
   try {
     const { origin, destination, rideType } = req.body;
 
@@ -50,7 +50,7 @@ exports.requestRide = async (req, res) => {
     await ride.save();
     res.status(201).json(ride);
 
-  } catch (error) {
+  } catch (error) { // Handle errors gracefully
     console.error('Ride request error:', error);
     res.status(500).json({
       error: "Failed to process ride request",
@@ -59,7 +59,7 @@ exports.requestRide = async (req, res) => {
   }
 };
 
-exports.acceptRide = async (req, res) => {
+exports.acceptRide = async (req, res) => { // Handle driver accepting a ride
   try {
     const rideManager = RideManagementSystem.getInstance();
     const ride = await rideManager.assignDriver(req.params.rideId, req.user.id);
@@ -103,7 +103,7 @@ exports.acceptRideLegacy = async (req, res) => {
   }
 };
 
-exports.completeRide = async (req, res) => {
+exports.completeRide = async (req, res) => { // Handle driver completing a ride
   try {
     const ride = await Ride.findById(req.params.rideId);
 
@@ -129,7 +129,7 @@ exports.completeRide = async (req, res) => {
   }
 };
 
-exports.getNewRides = async (req, res) => {
+exports.getNewRides = async (req, res) => { // Fetch new rides for drivers
   try {
     const tenMintuesAgo = new Date(Date.now() - 10 * 60 * 1000);
 

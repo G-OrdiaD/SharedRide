@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { rideService, placesService } from '../api';
 
-const RideRequestForm = ({ onSubmit }) => {
+const RideRequestForm = ({ onSubmit }) => { // Form component for requesting a new ride
   const [formData, setFormData] = useState({
     originLocation: '',
     destinationLocation: '',
@@ -21,7 +21,7 @@ const RideRequestForm = ({ onSubmit }) => {
     destination: null
   });
 
-  useEffect(() => {
+  useEffect(() => { // Fetch origin suggestions when input changes
     const fetchSuggestions = async (type, query) => {
       if (query.length < 3) {
         setSuggestions(prev => ({ ...prev, [type]: [] }));
@@ -82,7 +82,7 @@ const RideRequestForm = ({ onSubmit }) => {
       }
     };
 
-    const debounceTimer = setTimeout(() => {
+    const debounceTimer = setTimeout(() => { // Debounce input changes to avoid excessive API calls
       if (formData.destinationLocation !== selectedLocations.destination?.description) {
         fetchSuggestions('destination', formData.destinationLocation);
       }
@@ -106,8 +106,8 @@ const RideRequestForm = ({ onSubmit }) => {
     }));
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
+const handleSubmit = async (e) => { // Handle form submission
+  e.preventDefault(); 
   setMessage(null);
   setLoading(prev => ({ ...prev, submission: true }));
 
@@ -169,7 +169,7 @@ const handleSubmit = async (e) => {
   }
 };
 
-  return (
+  return ( // Render the ride request form
     <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md w-full max-w-md mx-auto">
       <h3 className="text-xl font-semibold text-gray-800 mb-4">Request a New Ride</h3>
 
@@ -216,7 +216,7 @@ const handleSubmit = async (e) => {
         )}
       </div>
 
-      <div className="mb-4 relative">
+      <div className="mb-4 relative"> // Form field for destination location
         <label className="block text-gray-700 text-sm font-bold mb-2">
           Destination Location:
           {loading.suggestions && formData.destinationLocation.length > 0 && (
@@ -249,7 +249,7 @@ const handleSubmit = async (e) => {
         )}
       </div>
 
-      <div className="mb-6">
+      <div className="mb-6"> // Form field for selecting ride type
         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="rideType">
           Ride Type:
         </label>
@@ -287,4 +287,4 @@ const handleSubmit = async (e) => {
   );
 };
 
-export default RideRequestForm;
+export default RideRequestForm; // Export the RideRequestForm component for use in other parts of the application

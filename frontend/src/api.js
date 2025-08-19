@@ -1,6 +1,6 @@
 const API_BASE_URL = 'http://localhost:5000';
 
-const getHeaders = () => {
+const getHeaders = () => { // Set up headers for API requests
   const headers = { 'Content-Type': 'application/json' };
   const token = localStorage.getItem('jwtToken');
   if (token) {
@@ -9,7 +9,7 @@ const getHeaders = () => {
   return headers;
 };
 
-const handleRequest = async (endpoint, options = {}) => {
+const handleRequest = async (endpoint, options = {}) => { // Handle API requests with error handling
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
@@ -30,7 +30,7 @@ const handleRequest = async (endpoint, options = {}) => {
   }
 };
 
-export const placesService = {
+export const placesService = { // Service for interacting with Google Places API
   autocomplete: async (input) => {
     const data = await handleRequest(`/api/places/autocomplete?input=${encodeURIComponent(input)}`);
     if (data.status === 'REQUEST_DENIED') {
@@ -49,7 +49,7 @@ export const placesService = {
 
 export const getHelloMessage = async () => handleRequest('/');
 
-export const authService = {
+export const authService = { // Service for user authentication
   login: async ({ email, password }) => {
     const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
       method: 'POST',
@@ -106,7 +106,7 @@ export const rideService = {
   }
 };
 
-export const userService = {
+export const userService = { // Service for user profile management
   getProfile: () => handleRequest('/api/auth/me'),
   updateProfile: (data) => handleRequest('/api/auth/me', {
     method: 'PUT',

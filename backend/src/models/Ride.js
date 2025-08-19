@@ -27,7 +27,7 @@ function decryptCoordinates(encrypted) {
   return JSON.parse(decrypted.toString());
 }
 
-const PointSchema = new mongoose.Schema({
+const PointSchema = new mongoose.Schema({ // Schema for storing geospatial points
   type: {
     type: String,
     enum: ['Point'],
@@ -44,7 +44,7 @@ const PointSchema = new mongoose.Schema({
 });
 
 
-const RideSchema = new mongoose.Schema({
+const RideSchema = new mongoose.Schema({ // Schema for ride requests
 
   origin: {
     locationString: { 
@@ -128,4 +128,4 @@ RideSchema.methods.getDecryptedLocations = function() {
   return ride;
 };
 
-module.exports = mongoose.model('Ride', RideSchema);
+module.exports = mongoose.model('Ride', RideSchema); // Export the Ride model

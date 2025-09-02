@@ -107,20 +107,20 @@ const RideRequestForm = ({ onSubmit }) => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); 
-    setMessage(null);
-    setLoading(prev => ({ ...prev, submission: true }));
+  e.preventDefault(); 
+  setMessage(null);
+  setLoading(prev => ({ ...prev, submission: true }));
 
-    if (!selectedLocations.origin || !selectedLocations.destination) {
-      setMessage({
-        type: 'error',
-        text: 'Please select both locations from the dropdown suggestions'
-      });
-      setLoading(prev => ({ ...prev, submission: false }));
-      return;
-    }
+  if (!selectedLocations.origin || !selectedLocations.destination) {
+    setMessage({
+      type: 'error',
+      text: 'Please select both locations from the dropdown suggestions'
+    });
+    setLoading(prev => ({ ...prev, submission: false }));
+    return;
+  }
 
-    try {
+  try {
       const [originDetails, destinationDetails] = await Promise.all([
         placesService.getPlaceDetails(selectedLocations.origin.place_id),
         placesService.getPlaceDetails(selectedLocations.destination.place_id)
@@ -166,16 +166,34 @@ const RideRequestForm = ({ onSubmit }) => {
 
       console.log('Submitting ride data:', JSON.stringify(rideData, null, 2));
       const response = await rideService.requestRide(rideData);
-      onSubmit(response);
+    
+     // SUCCESS HANDLING
+      setMessage({
+      type: 'success',
+      text: `Ride booked successfully! Fare: £${response.fare?.toFixed(2) || 'Calculating...'}`
+      });
+    
+     // Reset form after successful booking
+      setFormData({
+      originLocation: '',
+      destinationLocation: '',
+      rideType: 'standard'
+    });
+     setSelectedLocations({
+      origin: null,
+      destination: null
+    });
+    
+    onSubmit(response); // Pass the complete response to parent component
       
     } catch (error) {
-      console.error('Ride request failed:', error);
-      setMessage({
-        type: 'error',
-        text: error.message || 'Failed to request ride'
-      });
+     console.error('Ride request failed:', error);
+     setMessage({
+      type: 'error',
+      text: error.message || 'Failed to request ride'
+     });
     } finally {
-      setLoading(prev => ({ ...prev, submission: false }));
+     setLoading(prev => ({ ...prev, submission: false }));
     }
   };
 

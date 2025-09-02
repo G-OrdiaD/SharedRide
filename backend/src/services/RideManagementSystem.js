@@ -1,6 +1,7 @@
 const EventEmitter = require('events');
 const Ride = require('../models/Ride');
 const { Driver } = require('../models/User');
+const { getFareStrategy } = require('../strategies/fareStrategyFactory');
 
 class RideManagementSystem extends EventEmitter {
   constructor() {
@@ -21,22 +22,21 @@ class RideManagementSystem extends EventEmitter {
   }
 
   async createRide(passengerId, origin, destination, rideType = 'standard') {
-    const newRide = new Ride({
-      passenger: passengerId,
-      origin: {
-        coordinates: [origin.lng, origin.lat],
-        address: origin.address || ''
-      },
-      destination: {
-        coordinates: [destination.lng, destination.lat],
-        address: destination.address || ''
-      },
-      type: rideType,
-      status: 'requested',
-      requestedAt: new Date()
-    });
-
     try {
+      // Calculate fare
+      const fareStrategy = getFareStrategy(rideType);
+      const fare = fareStrategy.calculate([origin.lat, origin.lng], [destination.lat, destination.lng]);
+
+      const newRide = new Ride({
+        passenger: passengerId,
+        origin: { coordinates: [origin.lng, origin.lat], address: origin.address || '' },
+        destination: { coordinates: [destination.lng, destination.lat], address: destination.address || '' },
+        rideType,
+        status: 'requested',
+        requestedAt: new Date(),
+        fare
+      });
+
       await newRide.save();
       this.activeRides.set(newRide._id.toString(), newRide);
       this.emit('ride:created', newRide);
@@ -55,10 +55,7 @@ class RideManagementSystem extends EventEmitter {
         vehicleType: rideType === 'xl' ? 'xl' : { $in: ['standard', 'xl'] },
         location: {
           $near: {
-            $geometry: {
-              type: 'Point',
-              coordinates: originCoordinates
-            },
+            $geometry: { type: 'Point', coordinates: originCoordinates },
             $maxDistance: maxDistance
           }
         }
@@ -80,12 +77,19 @@ class RideManagementSystem extends EventEmitter {
       ride.driver = driverId;
       ride.status = 'driver_assigned';
       ride.assignedAt = new Date();
-      
+
+      // Recalculate fare if needed
+      if (!ride.fare) {
+        const originCoords = [ride.origin.location.coordinates[1], ride.origin.location.coordinates[0]];
+        const destCoords = [ride.destination.location.coordinates[1], ride.destination.location.coordinates[0]];
+        const fareStrategy = getFareStrategy(ride.rideType);
+        ride.fare = fareStrategy.calculate(originCoords, destCoords);
+      }
+
       driver.isAvailable = false;
-      
+
       await Promise.all([ride.save(), driver.save()]);
-      
-      this.emit('driver:Assigned', ride, driver);
+      this.emit('driver:assigned', ride, driver);
       return ride;
     } catch (error) {
       console.error('[RideManagement] Error assigning driver:', error);
@@ -100,7 +104,14 @@ class RideManagementSystem extends EventEmitter {
 
       ride.status = 'completed';
       ride.completedAt = new Date();
-      
+
+      if (!ride.fare) {
+        const originCoords = [ride.origin.location.coordinates[1], ride.origin.location.coordinates[0]];
+        const destCoords = [ride.destination.location.coordinates[1], ride.destination.location.coordinates[0]];
+        const fareStrategy = getFareStrategy(ride.rideType);
+        ride.fare = fareStrategy.calculate(originCoords, destCoords);
+      }
+
       if (ride.driver) {
         await Driver.findByIdAndUpdate(ride.driver, { isAvailable: true });
       }
@@ -123,7 +134,7 @@ class RideManagementSystem extends EventEmitter {
       ride.status = 'cancelled';
       ride.cancelledAt = new Date();
       ride.cancellationReason = reason;
-      
+
       if (ride.driver) {
         await Driver.findByIdAndUpdate(ride.driver, { isAvailable: true });
       }
@@ -143,7 +154,7 @@ class RideManagementSystem extends EventEmitter {
       const ride = await Ride.findById(rideId)
         .populate('passenger', 'name phone')
         .populate('driver', 'name phone vehicle');
-      
+
       if (!ride) throw new Error('Ride not found');
       return ride;
     } catch (error) {

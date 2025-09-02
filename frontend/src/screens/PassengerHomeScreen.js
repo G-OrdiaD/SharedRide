@@ -1,43 +1,53 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { logout } from '../features/authSlice'; // Import the logout action
-import RideRequestForm from '../components/RideRequestForm'; // Import the RideRequestForm component
-import { rideService } from '../api'; // Import rideService to handle the API call
+import { logout } from '../features/authSlice';
+import RideRequestForm from '../components/RideRequestForm';
+import { rideService } from '../api';
+import CustomAlertDialog from '../components/CustomAlertDialog';
 
 const PassengerHomeScreen = () => {
-  // Access user data from Redux store
   const user = useSelector((state) => state.auth.user);
-  const isAuthReady = useSelector((state) => state.auth.status !== 'idle'); // Check if auth state has been initialized
+  const isAuthReady = useSelector((state) => state.auth.status !== 'idle');
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // Basic route protection: Redirect if not authenticated or not a passenger
+  // STATE FOR ALERTS
+  const [alertMessage, setAlertMessage] = useState('');
+  const [showAlert, setShowAlert] = useState(false);
+
   useEffect(() => {
     if (isAuthReady && (!user || user.role !== 'passenger')) {
-      navigate('/'); // Redirect to AuthScreen if not logged in or not a passenger
+      navigate('/');
     }
   }, [user, isAuthReady, navigate]);
 
-  // Handle logout
   const handleLogout = () => {
-    dispatch(logout()); // Dispatch the logout action
-    navigate('/'); // Redirect to the authentication screen after logout
+    dispatch(logout());
+    navigate('/');
   };
 
+  // NAVIGATION HANDLER
+  const handleGoHome = () => {
+    navigate('/');
+  };
 
   const handleRideRequest = async (rideData) => {
-      try {
-          const response = await rideService.requestRide(rideData);
-          console.log('Ride requested successfully:', response);
-          // Handle a successful ride request, e.g., show a confirmation message
-      } catch (error) {
-          console.error('Failed to request ride:', error);
-          // Handle errors, e.g., show an error message to the user
-      }
+    try {
+      const response = await rideService.requestRide(rideData);
+      console.log('Ride requested successfully:', response);
+      
+      // SHOW SUCCESS MESSAGE WITH FARE
+      setAlertMessage(`Ride booked successfully! Fare: £${response.fare?.toFixed(2) || 'Calculating...'}`);
+      setShowAlert(true);
+      
+    } catch (error) {
+      console.error('Failed to request ride:', error);
+      setAlertMessage(error.message || 'Failed to request ride');
+      setShowAlert(true);
+    }
   };
 
-  // Render content only if user is authenticated and is a passenger
   if (!user || user.role !== 'passenger') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -48,12 +58,21 @@ const PassengerHomeScreen = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md text-center">
-        <h2 className="text-3xl font-bold text-gray-800 mb-4">Passenger Home</h2>
+      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+        {/* NAVIGATION BUTTON */}
+        <div className="flex justify-between items-center mb-6">
+          <button
+            onClick={handleGoHome}
+            className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded"
+          >
+            ← Home
+          </button>
+          <h2 className="text-2xl font-bold text-gray-800">Passenger Dashboard</h2>
+        </div>
+
         <p className="text-gray-600 mb-2">Welcome, <span className="font-semibold">{user.name}</span>!</p>
         <p className="text-gray-600 mb-6">Role: <span className="font-semibold capitalize">{user.role}</span></p>
 
-        {/* Integrate the RideRequestForm component here */}
         <div className="border-t border-gray-200 pt-6 mt-6">
           <h3 className="text-xl font-semibold text-gray-700 mb-4">Book a Ride</h3>
           <RideRequestForm onSubmit={handleRideRequest} /> 
@@ -66,6 +85,14 @@ const PassengerHomeScreen = () => {
           Logout
         </button>
       </div>
+
+      {/* ALERT DIALOG */}
+      {showAlert && (
+        <CustomAlertDialog
+          message={alertMessage}
+          onClose={() => setShowAlert(false)}
+        />
+      )}
     </div>
   );
 };

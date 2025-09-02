@@ -141,8 +141,8 @@ const RideSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['REQUESTED', 'MATCHED', 'ONGOING', 'COMPLETED', 'CANCELLED'],
-    default: 'REQUESTED'
+    enum: ['requested', 'driver_assigned', 'matched', 'ongoing', 'completed', 'cancelled',],
+    default: 'requested'
   },
   requestedAt: {
     type: Date,

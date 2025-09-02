@@ -3,8 +3,9 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 import { useDispatch, useSelector } from 'react-redux';
 import { initializeAuth } from './features/authSlice';
+
 import IndexScreen from './screens/IndexScreen';
-import AuthScreen from './screens/AuthScreen';
+import Auth from './components/Auth';
 import PassengerHomeScreen from './screens/PassengerHomeScreen';
 import DriverHomeScreen from './screens/DriverHomeScreen';
 import RideScreen from './screens/RideScreen';
@@ -26,15 +27,13 @@ function AppContent() {
   }
 
   return (
-    <>
-      <Routes>
-        <Route path="/" element={<IndexScreen />} />
-        <Route path="/auth" element={<AuthScreen />} />
-        <Route path="/passenger" element={<PassengerHomeScreen />} />
-        <Route path="/driver" element={<DriverHomeScreen />} />
-        <Route path="/ride" element={<RideScreen />} />
-      </Routes>
-    </>
+    <Routes>
+      <Route path="/" element={<IndexScreen />} />
+      <Route path="/auth" element={<Auth />} />
+      <Route path="/passenger" element={<PassengerHomeScreen />} />
+      <Route path="/driver" element={<DriverHomeScreen />} />
+      <Route path="/ride" element={<RideScreen />} />
+    </Routes>
   );
 }
 

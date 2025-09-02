@@ -1,22 +1,20 @@
-const mongoose = require('mongoose');
+const mongoose = require('mongoose'); // Mongoose for MongoDB
 const bcrypt = require('bcryptjs'); // For password hashing
 const jwt = require('jsonwebtoken'); // For JWT generation
 
-// Define the base User Schema
+// Base User Schema
 const UserSchema = new mongoose.Schema({
   name:       { type: String, required: true },
   email:      { type: String, required: true, unique: true },
   phone:      { type: String, required: true, unique: true },
-  
-  // The 'role' field will be used by Mongoose as the discriminator key
   role:       { type: String, enum: ['passenger', 'driver'], required: true },
-  passwordHash: { type: String, required: true, select: false } // Store hashed password, not plain text and never expose it in queries
+  passwordHash: { type: String, required: true, select: false }
 }, {
-  discriminatorKey: 'role', // This tells Mongoose to use the 'role' field to differentiate sub-models
-  timestamps: true // Adds createdAt and updatedAt fields
+  discriminatorKey: 'role',
+  timestamps: true
 });
 
-// Pre-save hook to hash password before saving (only if passwordHash is modified or new)
+// Pre-save hook to hash password
 UserSchema.pre('save', async function(next) {
   if (this.isModified('passwordHash')) {
     const salt = await bcrypt.genSalt(10);
@@ -25,12 +23,12 @@ UserSchema.pre('save', async function(next) {
   next();
 });
 
-// Method to verify a plain-text password against the stored hash
+// Verify password
 UserSchema.methods.verifyPassword = async function(password) {
   return await bcrypt.compare(password, this.passwordHash);
 };
 
-// Method to generate a JWT for this user
+// Generate JWT
 UserSchema.methods.generateJWT = function() {
   return jwt.sign(
     { id: this._id, role: this.role },
@@ -39,39 +37,29 @@ UserSchema.methods.generateJWT = function() {
   );
 };
 
+const User = mongoose.model('User', UserSchema);
 
-const User = mongoose.model('User', UserSchema); // This is the model that other models will "discriminate" from.
-
-// Define Discriminators for Passenger and Driver
-// These schemas extend the base UserSchema and add specific fields.
-// Mongoose automatically handles the 'role' field based on the discriminator.
-
-// Passenger Schema (discriminator)
+// Passenger discriminator
 const PassengerSchema = new mongoose.Schema({
-  // Passenger-specific fields
   paymentMethods: [{
-    type: String, // Example: 'card', 'crypto_wallet', 'cash'
-    details: String // Example: last 4 digits, email
-  }],
-  
+    type: String,
+    details: String
+  }]
 });
+const Passenger = User.discriminator('passenger', PassengerSchema);
 
-// Driver Schema (discriminator)
+// Driver discriminator
 const DriverSchema = new mongoose.Schema({
-  // Driver-specific fields
+  licenseNumber: { type: String, required: true },
   vehicle: {
     make: String,
     model: String,
-    licensePlate: { type: String, unique: true, sparse: true }, // sparse allows nulls but enforces uniqueness for non-nulls
-    color: String
+    color: String,
+    licensePlate: { type: String, unique: true, sparse: true }
   },
   isAvailable: { type: Boolean, default: true },
-  currentLocation: { lat: Number, lng: Number }, // Drivers often have dynamic locations
+  currentLocation: { lat: Number, lng: Number }
 });
-
-// Create Discriminator Models
-// These are Passenger and Driver Mongoose models.
-const Passenger = User.discriminator('passenger', PassengerSchema);
 const Driver = User.discriminator('driver', DriverSchema);
 
-module.exports = { User, Passenger, Driver }; // Export the base User model AND the discriminator models
+module.exports = { User, Passenger, Driver };

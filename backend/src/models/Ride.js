@@ -1,9 +1,6 @@
 const mongoose = require('mongoose');
 const crypto = require('crypto');
-const config = require('../config/db');
-
-
-// If config.locationEncryptionKey is undefined, try the direct import:
+const config = require('../config/db'); // Import config to access the encryption key
 const { locationEncryptionKey } = require('../config/db');
 
 // Encryption utilities

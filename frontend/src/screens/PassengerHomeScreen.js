@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../features/authSlice';
 import RideRequestForm from '../components/RideRequestForm';
-import { rideService } from '../api';
+import rideService  from '../services/RideService';
 import CustomAlertDialog from '../components/CustomAlertDialog';
 
 const PassengerHomeScreen = () => {
@@ -12,22 +12,43 @@ const PassengerHomeScreen = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // STATE FOR ALERTS
+  // STATE
   const [alertMessage, setAlertMessage] = useState('');
   const [showAlert, setShowAlert] = useState(false);
+  const [currentRide, setCurrentRide] = useState(null);
+  const [isFetchingRide, setIsFetchingRide] = useState(false);
 
+  // Redirect unauthorized users
   useEffect(() => {
     if (isAuthReady && (!user || user.role !== 'passenger')) {
       navigate('/');
     }
   }, [user, isAuthReady, navigate]);
 
+  // Fetch active ride and poll every 10 seconds
+  useEffect(() => {
+    const fetchActiveRide = async () => {
+      setIsFetchingRide(true);
+      try {
+        const ride = await rideService.getActiveRide();
+        setCurrentRide(ride || null);
+      } catch (error) {
+        console.error('Error fetching active ride:', error);
+      } finally {
+        setIsFetchingRide(false);
+      }
+    };
+
+    fetchActiveRide();
+    const interval = setInterval(fetchActiveRide, 10000); // poll every 10s
+    return () => clearInterval(interval);
+  }, []);
+
   const handleLogout = () => {
     dispatch(logout());
     navigate('/');
   };
 
-  // NAVIGATION HANDLER
   const handleGoHome = () => {
     navigate('/');
   };
@@ -36,11 +57,8 @@ const PassengerHomeScreen = () => {
     try {
       const response = await rideService.requestRide(rideData);
       console.log('Ride requested successfully:', response);
-      
-      // SHOW SUCCESS MESSAGE WITH FARE
       setAlertMessage(`Ride booked successfully! Fare: £${response.fare?.toFixed(2) || 'Calculating...'}`);
       setShowAlert(true);
-      
     } catch (error) {
       console.error('Failed to request ride:', error);
       setAlertMessage(error.message || 'Failed to request ride');
@@ -59,7 +77,7 @@ const PassengerHomeScreen = () => {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
-        {/* NAVIGATION BUTTON */}
+        {/* NAVIGATION */}
         <div className="flex justify-between items-center mb-6">
           <button
             onClick={handleGoHome}
@@ -75,8 +93,23 @@ const PassengerHomeScreen = () => {
 
         <div className="border-t border-gray-200 pt-6 mt-6">
           <h3 className="text-xl font-semibold text-gray-700 mb-4">Book a Ride</h3>
-          <RideRequestForm onSubmit={handleRideRequest} /> 
+          <RideRequestForm onSubmit={handleRideRequest} />
         </div>
+
+        {/* Active Ride & Driver Info */}
+        {isFetchingRide ? (
+          <p className="text-gray-500 mt-6">Checking for active rides...</p>
+        ) : currentRide && currentRide.driver ? (
+          <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Your Driver</h3>
+            <p><span className="font-semibold">Name:</span> {currentRide.driver.name}</p>
+            <p><span className="font-semibold">Vehicle Number:</span> {currentRide.driver.vehicle?.licensePlate || 'N/A'}</p>
+            <p><span className="font-semibold">Model:</span> {currentRide.driver.vehicle?.model || 'N/A'}</p>
+            <p><span className="font-semibold">Color:</span> {currentRide.driver.vehicle?.color || 'N/A'}</p>
+          </div>
+        ) : (
+          <p className="text-gray-500 mt-6">No active rides at the moment.</p>
+        )}
 
         <button
           onClick={handleLogout}

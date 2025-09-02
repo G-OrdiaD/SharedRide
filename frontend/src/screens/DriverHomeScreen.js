@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../features/authSlice';
-import { rideService } from '../api';
+import rideService from '../services/RideService'; 
 import RideRequestModal from '../components/RideRequestModal';
 import CustomAlertDialog from '../components/CustomAlertDialog';
 
@@ -20,9 +20,8 @@ const DriverHomeScreen = () => {
   const [alertMessage, setAlertMessage] = useState('');
   const [showAlert, setShowAlert] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
-  const [acceptedRides, setAcceptedRides] = useState(new Set()); // Track accepted rides
+  const [acceptedRides, setAcceptedRides] = useState(new Set());
 
-  // Navigation effect
   useEffect(() => {
     if (authStatus === 'succeeded' && (!user || !isDriver)) {
       navigate('/');
@@ -31,22 +30,19 @@ const DriverHomeScreen = () => {
 
   const fetchNewRideRequests = useCallback(async () => {
     if (!token || isFetching) return;
-    
     setIsFetching(true);
     try {
-      const rides = await rideService.getNewRides();
-      
-      // Filter out already accepted rides and old requests
+      const rides = await rideService.getAvailableRides(); // Updated service includes driver info
+
       const recentRides = rides.filter(ride => {
         const rideTime = new Date(ride.requestedAt).getTime();
         const isRecent = (Date.now() - rideTime) < (10 * 60 * 1000);
         const notAccepted = !acceptedRides.has(ride._id);
         return isRecent && notAccepted;
       });
-      
+
       setNewRideRequests(recentRides);
-      
-      // Show modal for new rides that haven't been seen before
+
       if (!showRideRequestModal && recentRides.length > 0) {
         const newRide = recentRides[0];
         setCurrentRideRequest(newRide);
@@ -56,7 +52,7 @@ const DriverHomeScreen = () => {
       console.error('Error fetching rides:', error);
       setAlertMessage(error.message || 'Failed to fetch rides');
       setShowAlert(true);
-      
+
       if (error.response?.status === 401) {
         dispatch(logout());
         navigate('/login');
@@ -66,28 +62,23 @@ const DriverHomeScreen = () => {
     }
   }, [token, showRideRequestModal, acceptedRides, dispatch, navigate, isFetching]);
 
-  // Fetch rides when auth is ready and setup polling
   useEffect(() => {
     if (authStatus === 'succeeded' && isDriver && token) {
       fetchNewRideRequests();
-      
-      const interval = setInterval(fetchNewRideRequests, 5000); // Poll every 5 seconds
+      const interval = setInterval(fetchNewRideRequests, 5000);
       return () => clearInterval(interval);
     }
   }, [authStatus, isDriver, token, fetchNewRideRequests]);
 
   const handleAcceptRide = async () => {
     if (!currentRideRequest) return;
-    
     try {
-      // Call the API to accept the ride
-      await rideService.acceptRide(currentRideRequest._id);
-      
-      // Update local state
+      const ride = await rideService.acceptRide(currentRideRequest._id);
+
       setAcceptedRides(prev => new Set(prev).add(currentRideRequest._id));
       setNewRideRequests(prev => prev.filter(r => r._id !== currentRideRequest._id));
-      
-      setAlertMessage(`Ride accepted! Fare: £${currentRideRequest.fare?.toFixed(2) || 'N/A'}`);
+
+      setAlertMessage(`Ride accepted! Fare: £${ride.fare?.toFixed(2) || 'N/A'}`);
       setShowAlert(true);
       setShowRideRequestModal(false);
       setCurrentRideRequest(null);
@@ -100,21 +91,14 @@ const DriverHomeScreen = () => {
 
   const handleRejectRide = async () => {
     if (!currentRideRequest) return;
+
+    setAcceptedRides(prev => new Set(prev).add(currentRideRequest._id));
+    setNewRideRequests(prev => prev.filter(r => r._id !== currentRideRequest._id));
     
-    try {
-      // Mark as rejected locally (no API call needed for simple rejection)
-      setAcceptedRides(prev => new Set(prev).add(currentRideRequest._id));
-      setNewRideRequests(prev => prev.filter(r => r._id !== currentRideRequest._id));
-      
-      setAlertMessage('Ride request rejected');
-      setShowAlert(true);
-      setShowRideRequestModal(false);
-      setCurrentRideRequest(null);
-    } catch (error) {
-      console.error('Error rejecting ride:', error);
-      setAlertMessage(error.message || 'Failed to reject ride');
-      setShowAlert(true);
-    }
+    setAlertMessage('Ride request rejected');
+    setShowAlert(true);
+    setShowRideRequestModal(false);
+    setCurrentRideRequest(null);
   };
 
   const handleLogout = () => {
@@ -127,23 +111,14 @@ const DriverHomeScreen = () => {
     setShowRideRequestModal(true);
   };
 
-  // Navigation button handler
-  const handleGoHome = () => {
-    navigate('/');
-  };
+  const handleGoHome = () => navigate('/');
 
-  if (authStatus !== 'succeeded') {
-    return <div className="flex items-center justify-center min-h-screen bg-gray-100"><p>Authenticating...</p></div>;
-  }
-
-  if (!user || !isDriver) {
-    return <div className="flex items-center justify-center min-h-screen bg-gray-100"><p>Redirecting to login...</p></div>;
-  }
+  if (authStatus !== 'succeeded') return <div className="flex items-center justify-center min-h-screen bg-gray-100"><p>Authenticating...</p></div>;
+  if (!user || !isDriver) return <div className="flex items-center justify-center min-h-screen bg-gray-100"><p>Redirecting to login...</p></div>;
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
-        {/* NAVIGATION BUTTON */}
         <div className="flex justify-between items-center mb-6">
           <button
             onClick={handleGoHome}
@@ -180,6 +155,11 @@ const DriverHomeScreen = () => {
                   {ride.passenger?.name && (
                     <p className="text-sm text-gray-600">Passenger: {ride.passenger.name}</p>
                   )}
+                  {ride.driver && (
+                    <p className="text-sm text-gray-600">
+                      Driver: {ride.driver.name} | Vehicle: {ride.driver.make} {ride.driver.model} ({ride.driver.color}) | Plate: {ride.driver.licensePlate}
+                    </p>
+                  )}
                 </li>
               ))}
             </ul>
@@ -194,7 +174,6 @@ const DriverHomeScreen = () => {
         </button>
       </div>
 
-      {/* Modal and Alert components remain the same */}
       {showRideRequestModal && currentRideRequest && (
         <RideRequestModal
           rideDetails={currentRideRequest}

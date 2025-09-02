@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { rideService, placesService } from '../api';
 
-const RideRequestForm = ({ onSubmit }) => { // Form component for requesting a new ride
+const RideRequestForm = ({ onSubmit }) => {
   const [formData, setFormData] = useState({
     originLocation: '',
     destinationLocation: '',
@@ -21,7 +21,7 @@ const RideRequestForm = ({ onSubmit }) => { // Form component for requesting a n
     destination: null
   });
 
-  useEffect(() => { // Fetch origin suggestions when input changes
+  useEffect(() => {
     const fetchSuggestions = async (type, query) => {
       if (query.length < 3) {
         setSuggestions(prev => ({ ...prev, [type]: [] }));
@@ -82,7 +82,7 @@ const RideRequestForm = ({ onSubmit }) => { // Form component for requesting a n
       }
     };
 
-    const debounceTimer = setTimeout(() => { // Debounce input changes to avoid excessive API calls
+    const debounceTimer = setTimeout(() => {
       if (formData.destinationLocation !== selectedLocations.destination?.description) {
         fetchSuggestions('destination', formData.destinationLocation);
       }
@@ -106,70 +106,80 @@ const RideRequestForm = ({ onSubmit }) => { // Form component for requesting a n
     }));
   };
 
-const handleSubmit = async (e) => { // Handle form submission
-  e.preventDefault(); 
-  setMessage(null);
-  setLoading(prev => ({ ...prev, submission: true }));
+  const handleSubmit = async (e) => {
+    e.preventDefault(); 
+    setMessage(null);
+    setLoading(prev => ({ ...prev, submission: true }));
 
-  if (!selectedLocations.origin || !selectedLocations.destination) {
-    setMessage({
-      type: 'error',
-      text: 'Please select both locations from the dropdown suggestions'
-    });
-    setLoading(prev => ({ ...prev, submission: false }));
-    return;
-  }
-
-  try {
-    const [originDetails, destinationDetails] = await Promise.all([
-      placesService.getPlaceDetails(selectedLocations.origin.place_id),
-      placesService.getPlaceDetails(selectedLocations.destination.place_id)
-    ]);
-
-    if (!originDetails.result || !destinationDetails.result) {
-      throw new Error('Invalid location details received');
+    if (!selectedLocations.origin || !selectedLocations.destination) {
+      setMessage({
+        type: 'error',
+        text: 'Please select both locations from the dropdown suggestions'
+      });
+      setLoading(prev => ({ ...prev, submission: false }));
+      return;
     }
-    
-    const rideData = {
-      origin: {
-        locationString: originDetails.result.formatted_address,
-        location: {
-          type: "Point",
-          coordinates: [
-            originDetails.result.geometry.location.lng,
-            originDetails.result.geometry.location.lat
-          ]
-        }
-      },
-      destination: {
-        locationString: destinationDetails.result.formatted_address,
-        location: {
-          type: "Point",
-          coordinates: [
-            destinationDetails.result.geometry.location.lng,
-            destinationDetails.result.geometry.location.lat
-          ]
-        }
-      },
-      rideType: formData.rideType
-    };
 
-    console.log('Submitting ride data:', rideData);
-    const response = await rideService.requestRide(rideData);
-    onSubmit(response);
-    
-  } catch (error) {
-    console.error('Ride request failed:', error);
-    setMessage({
-      type: 'error',
-      text: error.message || 'Failed to request ride'
-    });
-  } finally {
-    setLoading(prev => ({ ...prev, submission: false }));
-  }
-};
+    try {
+      const [originDetails, destinationDetails] = await Promise.all([
+        placesService.getPlaceDetails(selectedLocations.origin.place_id),
+        placesService.getPlaceDetails(selectedLocations.destination.place_id)
+      ]);
 
-  return ( // Render the ride request form
+      // Enhanced validation for Google API response
+      if (!originDetails.result || !destinationDetails.result) {
+        throw new Error('Invalid location details received from Google API');
+      }
+
+      if (!originDetails.result.geometry?.location || !destinationDetails.result.geometry?.location) {
+        throw new Error('Google Maps API returned invalid location data');
+      }
+
+      // Validate coordinate values are numbers
+      const originLng = originDetails.result.geometry.location.lng;
+      const originLat = originDetails.result.geometry.location.lat;
+      const destLng = destinationDetails.result.geometry.location.lng;
+      const destLat = destinationDetails.result.geometry.location.lat;
+
+      if (typeof originLng !== 'number' || typeof originLat !== 'number' ||
+          typeof destLng !== 'number' || typeof destLat !== 'number') {
+        throw new Error('Invalid coordinate values received from Google API');
+      }
+      
+      const rideData = {
+        origin: {
+          locationString: originDetails.result.formatted_address,
+          location: {
+            type: "Point",
+            coordinates: [originLng, originLat]
+          }
+        },
+        destination: {
+          locationString: destinationDetails.result.formatted_address,
+          location: {
+            type: "Point",
+            coordinates: [destLng, destLat]
+          }
+        },
+        rideType: formData.rideType
+      };
+
+      console.log('Submitting ride data:', JSON.stringify(rideData, null, 2));
+      const response = await rideService.requestRide(rideData);
+      onSubmit(response);
+      
+    } catch (error) {
+      console.error('Ride request failed:', error);
+      setMessage({
+        type: 'error',
+        text: error.message || 'Failed to request ride'
+      });
+    } finally {
+      setLoading(prev => ({ ...prev, submission: false }));
+    }
+  };
+
+  return (
     <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md w-full max-w-md mx-auto">
       <h3 className="text-xl font-semibold text-gray-800 mb-4">Request a New Ride</h3>
 
@@ -216,7 +226,7 @@ const handleSubmit = async (e) => { // Handle form submission
         )}
       </div>
 
-      <div className="mb-4 relative"> // Form field for destination location
+      <div className="mb-4 relative">
         <label className="block text-gray-700 text-sm font-bold mb-2">
           Destination Location:
           {loading.suggestions && formData.destinationLocation.length > 0 && (
@@ -249,7 +259,7 @@ const handleSubmit = async (e) => { // Handle form submission
         )}
       </div>
 
-      <div className="mb-6"> // Form field for selecting ride type
+      <div className="mb-6">
         <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="rideType">
           Ride Type:
         </label>
@@ -287,4 +297,4 @@ const handleSubmit = async (e) => { // Handle form submission
   );
 };
 
-export default RideRequestForm; // Export the RideRequestForm component for use in other parts of the application
+export default RideRequestForm;

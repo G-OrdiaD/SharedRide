@@ -1,15 +1,13 @@
 const API_BASE_URL = 'http://localhost:5000';
 
-const getHeaders = () => { // Set up headers for API requests
+const getHeaders = () => {
   const headers = { 'Content-Type': 'application/json' };
   const token = localStorage.getItem('jwtToken');
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
+  if (token) headers['Authorization'] = `Bearer ${token}`;
   return headers;
 };
 
-const handleRequest = async (endpoint, options = {}) => { // Handle API requests with error handling
+const handleRequest = async (endpoint, options = {}) => {
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
@@ -30,26 +28,17 @@ const handleRequest = async (endpoint, options = {}) => { // Handle API requests
   }
 };
 
-export const placesService = { // Service for interacting with Google Places API
-  autocomplete: async (input) => {
-    const data = await handleRequest(`/api/places/autocomplete?input=${encodeURIComponent(input)}`);
-    if (data.status === 'REQUEST_DENIED') {
-      throw new Error('API key rejected by Google');
-    }
-    return data;
-  },
-  getPlaceDetails: async (placeId) => {
-    const data = await handleRequest(`/api/places/details?place_id=${encodeURIComponent(placeId)}`);
-    if (data.status !== 'OK') {
-      throw new Error('Invalid place details response');
-    }
-    return data;
-  }
+export const rideService = {
+  requestRide: (rideData) => handleRequest('/api/rides/request', {
+    method: 'POST',
+    body: JSON.stringify(rideData)
+  }),
+  acceptRide: (rideId) => handleRequest(`/api/rides/${rideId}/accept`, { method: 'PUT' }),
+  completeRide: (rideId) => handleRequest(`/api/rides/${rideId}/complete`, { method: 'PUT' }),
+  getNewRides: () => handleRequest('/api/rides/new-rides')
 };
 
-export const getHelloMessage = async () => handleRequest('/');
-
-export const authService = { // Service for user authentication
+export const authService = {
   login: async ({ email, password }) => {
     const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
       method: 'POST',
@@ -71,45 +60,31 @@ export const authService = { // Service for user authentication
     return data;
   },
   getProfile: () => handleRequest('/api/auth/me')
-  };
+};
 
-export const rideService = {
-  requestRide: (rideData) => {
-
-   // Validate coordinates before sending
-    // if (!rideData?.origin?.location?.coordinates || 
-    //   !rideData?.destination?.location?.coordinates || 
-    //   !Array.isArray(rideData.origin.location.coordinates) ||
-    //   !Array.isArray(rideData.destination.location.coordinates)) { 
-    // console.log('Requesting ride with data:', rideData);
-    // throw new Error(`Invalid location coordinates format: ${JSON.stringify(rideData)}`); 
-    // }
-
-    // Original implementation remains unchanged below
-    return handleRequest('/api/rides/request', {
-      method: 'POST',
-      body: JSON.stringify(rideData)
-    });
+export const placesService = {
+  autocomplete: async (input) => {
+    const data = await handleRequest(`/api/places/autocomplete?input=${encodeURIComponent(input)}`);
+    if (data.status === 'REQUEST_DENIED') {
+      throw new Error('API key rejected by Google');
+    }
+    return data;
   },
-  completeRide: (rideId) => {
-    return handleRequest(`/api/rides/${rideId}/complete`, {
-      method: 'PUT'
-    });
-  },
-  getNewRides: () => {
-    return handleRequest('/api/rides/new-rides');
-  },
-  acceptRide: (rideId) => {
-    return handleRequest(`/api/rides/${rideId}/accept`, {
-      method: 'PUT'
-    });
+  getPlaceDetails: async (placeId) => {
+    const data = await handleRequest(`/api/places/details?place_id=${encodeURIComponent(placeId)}`);
+    if (data.status !== 'OK') {
+      throw new Error('Invalid place details response');
+    }
+    return data;
   }
 };
 
-export const userService = { // Service for user profile management
+export const userService = {
   getProfile: () => handleRequest('/api/auth/me'),
   updateProfile: (data) => handleRequest('/api/auth/me', {
     method: 'PUT',
     body: JSON.stringify(data)
   })
 };
+
+export const getHelloMessage = async () => handleRequest('/');

@@ -8,8 +8,7 @@ const UserSchema = new mongoose.Schema({
   email:      { type: String, required: true, unique: true },
   phone:      { type: String, required: true, unique: true },
   
-  // The 'role' field will be used by Mongoose as the discriminator key.
-  // which specific schema (Passenger, Driver) to apply.
+  // The 'role' field will be used by Mongoose as the discriminator key
   role:       { type: String, enum: ['passenger', 'driver'], required: true },
   passwordHash: { type: String, required: true, select: false } // Store hashed password, not plain text and never expose it in queries
 }, {

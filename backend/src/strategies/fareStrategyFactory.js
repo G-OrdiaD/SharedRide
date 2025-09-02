@@ -21,7 +21,7 @@ function isValidCoordinate(coords) {
 
 const fareStrategies = {
   standard: {
-    // Corrected: Accept two coordinate arrays as arguments
+    // Accept two coordinate arrays as arguments
     calculate: (coord1, coord2) => {
       const [originLat, originLng] = coord1;
       const [destLat, destLng] = coord2;
@@ -41,6 +41,7 @@ const fareStrategies = {
       return baseFare + (distance * distanceFactor);
     }
   },
+
   pool: {
     calculate: (coord1, coord2) => {
       const [originLat, originLng] = coord1;
@@ -51,17 +52,15 @@ const fareStrategies = {
           !isValidCoordinate(destLat) || !isValidCoordinate(destLng)) {
         throw new Error('Invalid coordinates provided');
       }
-
       // Pool might be cheaper
       const baseFare = 3;
       const distanceFactor = 0.3;
-      
-      // Use the robust Haversine distance calculation
       const distance = calculateHaversineDistance(coord1, coord2);
 
       return baseFare + (distance * distanceFactor);
     }
   },
+
   luxury: {
     calculate: (coord1, coord2) => {
       const [originLat, originLng] = coord1;
@@ -73,11 +72,9 @@ const fareStrategies = {
         throw new Error('Invalid coordinates provided');
       }
 
-      // Luxury might be more expensive
+      // Luxury rides are more expensive
       const baseFare = 10;
       const distanceFactor = 1.0;
-      
-      // Use the robust Haversine distance calculation
       const distance = calculateHaversineDistance(coord1, coord2);
 
       return baseFare + (distance * distanceFactor);

@@ -1,51 +1,95 @@
 const mongoose = require('mongoose');
-const { getFareStrategy } = require('../strategies/fareStrategyFactory');
 const crypto = require('crypto');
 const config = require('../config/db');
 
 
-// Encryption utilities directly in the model file
+// If config.locationEncryptionKey is undefined, try the direct import:
+const { locationEncryptionKey } = require('../config/db');
+
+// Encryption utilities
 function encryptCoordinates(coords) {
+  if (!coords || !Array.isArray(coords)) {
+    throw new Error(`Cannot encrypt coordinates: Invalid input. Received: ${typeof coords}`);
+  }
+
+  const algorithm = 'aes-256-cbc';
+  
+  
+  if (!config.locationEncryptionKey) {
+    throw new Error('Encryption key is not configured');
+  }
+
+  let key;
+  try {
+    // Convert hex string to buffer
+    key = Buffer.from(config.locationEncryptionKey, 'hex');
+    
+    // Verify it's 32 bytes (64 hex characters should become 32 bytes)
+    if (key.length !== 32) {
+      throw new Error(`Key must be 32 bytes after hex decoding. Got: ${key.length} bytes`);
+    }
+    
+  } catch (error) {
+    throw new Error(`Invalid encryption key: ${error.message}. Key: ${config.locationEncryptionKey}`);
+  }
+  
   const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv('aes-256-cbc', 
-    Buffer.from(config.locationEncryptionKey), iv);
-  let encrypted = cipher.update(JSON.stringify(coords));
-  encrypted = Buffer.concat([encrypted, cipher.final()]);
-  return {
-    iv: iv.toString('hex'),
-    content: encrypted.toString('hex')
-  };
+
+  try {
+    const cipher = crypto.createCipheriv(algorithm, key, iv);
+    let encrypted = cipher.update(JSON.stringify(coords), 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    
+    return {
+      iv: iv.toString('hex'),
+      content: encrypted
+    };
+  } catch (error) {
+    throw new Error(`Encryption failed: ${error.message}`);
+  }
 }
 
 function decryptCoordinates(encrypted) {
+  const algorithm = 'aes-256-cbc';
+  
+  if (!config.locationEncryptionKey) {
+    throw new Error('Encryption key is not configured');
+  }
+
+  let key;
+  try {
+    key = Buffer.from(config.locationEncryptionKey, 'hex');
+    
+    if (key.length !== 32) {
+      throw new Error(`Key must be 32 bytes after hex decoding. Got: ${key.length} bytes`);
+    }
+  } catch (error) {
+    throw new Error(`Invalid encryption key: ${error.message}`);
+  }
+  
   const iv = Buffer.from(encrypted.iv, 'hex');
-  const content = Buffer.from(encrypted.content, 'hex');
-  const decipher = crypto.createDecipheriv('aes-256-cbc', 
-    Buffer.from(config.locationEncryptionKey), iv);
-  let decrypted = decipher.update(content);
-  decrypted = Buffer.concat([decrypted, decipher.final()]);
-  return JSON.parse(decrypted.toString());
+
+  try {
+    const decipher = crypto.createDecipheriv(algorithm, key, iv);
+    let decrypted = decipher.update(encrypted.content, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    
+    return JSON.parse(decrypted);
+  } catch (error) {
+    throw new Error(`Decryption failed: ${error.message}`);
+  }
 }
 
-const PointSchema = new mongoose.Schema({ // Schema for storing geospatial points
-  type: {
-    type: String,
-    enum: ['Point'],
+const RideSchema = new mongoose.Schema({
+  passenger: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
     required: true
   },
-  coordinates: {
-    type: mongoose.Schema.Types.Mixed, // Mixed type for encrypted coordinates
-    required: true
+  driver: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   },
-  encrypted: {
-    type: Boolean,
-    default: false
-  }
-});
-
-
-const RideSchema = new mongoose.Schema({ // Schema for ride requests
-
   origin: {
     locationString: { 
       type: String, 
@@ -59,8 +103,12 @@ const RideSchema = new mongoose.Schema({ // Schema for ride requests
         required: true
       },
       coordinates: {
-        type: [Number], // [lng, lat]
+        type: [Number], // Store as simple array of numbers
         required: true
+      },
+      encrypted: {
+        type: Boolean,
+        default: false
       }
     }
   },
@@ -77,55 +125,104 @@ const RideSchema = new mongoose.Schema({ // Schema for ride requests
         required: true
       },
       coordinates: {
-        type: [Number], // [lng, lat]
+        type: [Number], // Store as simple array of numbers
         required: true
+      },
+      encrypted: {
+        type: Boolean,
+        default: false
       }
     }
+  },
+  rideType: {
+    type: String,
+    enum: ['standard', 'pool', 'luxury', 'xl'],
+    default: 'standard'
   },
   status: {
     type: String,
     enum: ['REQUESTED', 'MATCHED', 'ONGOING', 'COMPLETED', 'CANCELLED'],
     default: 'REQUESTED'
   },
+  requestedAt: {
+    type: Date,
+    default: Date.now
+  },
+  acceptedAt: Date,
+  startedAt: Date,
+  completedAt: Date,
+  fare: Number,
+  distance: Number,
+  duration: Number,
+  events: [{
+    type: {
+      type: String,
+      required: true
+    },
+    timestamp: {
+      type: Date,
+      default: Date.now
+    },
+    data: mongoose.Schema.Types.Mixed
+  }]
+}, {
+  timestamps: true
 });
 
-// Pre-save hook to encrypt coordinates
+// Pre-save hook to encrypt coordinates - PROPERLY FIXED
 RideSchema.pre('save', function(next) {
-   // Validate coordinates before encrypting
-  const validatecoords = (coords) => {
-    if (!Array.isArray(coords)) return false;
-    return coords.every(coord => typeof coord === 'number' && !isNaN(coord));
-  };
-
-  if (this.isModified('origin.location.coordinates') && !this.origin.location.encrypted) {
-    const encrypted = encryptCoordinates(this.origin.location.coordinates);
-    this.origin.location.coordinates = encrypted;
-    this.origin.location.encrypted = true;
+  // Only encrypt if we have valid coordinates and they're not already encrypted
+  if (this.isModified('origin.location.coordinates') && 
+      !this.origin.location.encrypted &&
+      Array.isArray(this.origin.location.coordinates) &&
+      this.origin.location.coordinates.length === 2) {
+    try {
+      const encrypted = encryptCoordinates(this.origin.location.coordinates);
+      this.origin.location.coordinates = encrypted;
+      this.origin.location.encrypted = true;
+    } catch (error) {
+      return next(error);
+    }
   }
   
-  if (this.isModified('destination.location.coordinates') && !this.destination.location.encrypted) {
-    const encrypted = encryptCoordinates(this.destination.location.coordinates);
-    this.destination.location.coordinates = encrypted;
-    this.destination.location.encrypted = true;
+  if (this.isModified('destination.location.coordinates') && 
+      !this.destination.location.encrypted &&
+      Array.isArray(this.destination.location.coordinates) &&
+      this.destination.location.coordinates.length === 2) {
+    try {
+      const encrypted = encryptCoordinates(this.destination.location.coordinates);
+      this.destination.location.coordinates = encrypted;
+      this.destination.location.encrypted = true;
+    } catch (error) {
+      return next(error);
+    }
   }
+  
   next();
 });
 
-// Method to decrypt location data when needed
+// Method to decrypt location data for frontend use
 RideSchema.methods.getDecryptedLocations = function() {
-  const ride = this.toObject();
+  const rideObj = this.toObject();
   
-  if (ride.origin.location.encrypted) {
-    ride.origin.location.coordinates = decryptCoordinates(ride.origin.location.coordinates);
-    ride.origin.location.encrypted = false;
+  if (rideObj.origin.location.encrypted) {
+    rideObj.origin.location.coordinates = decryptCoordinates(rideObj.origin.location.coordinates);
+    rideObj.origin.location.encrypted = false;
   }
   
-  if (ride.destination.location.encrypted) {
-    ride.destination.location.coordinates = decryptCoordinates(ride.destination.location.coordinates);
-    ride.destination.location.encrypted = false;
+  if (rideObj.destination.location.encrypted) {
+    rideObj.destination.location.coordinates = decryptCoordinates(rideObj.destination.location.coordinates);
+    rideObj.destination.location.encrypted = false;
   }
   
-  return ride;
+  return rideObj;
 };
 
-module.exports = mongoose.model('Ride', RideSchema); // Export the Ride model
+// Index for geospatial queries
+RideSchema.index({ 'origin.location.coordinates': '2dsphere' });
+RideSchema.index({ 'destination.location.coordinates': '2dsphere' });
+RideSchema.index({ status: 1, requestedAt: -1 });
+RideSchema.index({ passenger: 1, requestedAt: -1 });
+RideSchema.index({ driver: 1, status: 1 });
+
+module.exports = mongoose.model('Ride', RideSchema);

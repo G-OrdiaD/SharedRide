@@ -44,7 +44,7 @@ const DriverHomeScreen = () => {
       setShowAlert(true);
       if (error.response?.status === 401) {
         dispatch(logout());
-        navigate('/login');
+        navigate('/');
       }
     } finally {
       setIsFetching(false);
@@ -93,22 +93,41 @@ const DriverHomeScreen = () => {
   if (!user || !isDriver) return <p>Redirecting to login...</p>;
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
-        <div className="flex justify-between items-center mb-6">
-          <button onClick={handleGoHome} className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">← Home</button>
-          <h2 className="text-2xl font-bold text-gray-800">Driver Dashboard</h2>
-        </div>
+    <div className="min-h-screen bg-silver flex flex-col items-center justify-center p-4 font-modern">
 
-        <p className="text-gray-600 mb-2">Welcome, <span className="font-semibold">{user.name}</span>!</p>
-        <p className="text-gray-600 mb-6">Role: <span className="font-semibold capitalize">{user.role}</span></p>
+      {/* Top Buttons */}
+      <div className="w-full max-w-md flex justify-between mb-6">
+        <button
+          onClick={handleGoHome}
+          className="bg-light-blue hover:bg-light-blue-dark text-white font-bold py-2 px-4 rounded transition-all"
+        >
+          ← Home
+        </button>
+        <button
+          onClick={handleLogout}
+          className="bg-light-blue hover:bg-light-blue-dark text-white font-bold py-2 px-4 rounded transition-all"
+        >
+          Logout
+        </button>
+      </div>
 
-        <div className="border-t border-gray-200 pt-6 mt-6">
-          <h3 className="text-xl font-semibold text-gray-700 mb-4">Available Ride Requests</h3>
-          {isFetching ? <p>Loading rides...</p> : newRideRequests.length === 0 ? <p>No new ride requests</p> :
+      {/* Main Content */}
+      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md text-center">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">Driver Dashboard</h2>
+        <p className="text-gray-700 mb-2">Welcome, <span className="font-semibold">{user.name}</span>!</p>
+  
+
+        <div className="border-t border-gray-200 pt-6 mt-6 text-left">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4">Available Ride Requests</h3>
+          {isFetching ? <p>Loading rides...</p> :
+            newRideRequests.length === 0 ? <p>No new ride requests</p> :
             <ul>
               {newRideRequests.map(ride => (
-                <li key={ride._id} className="bg-blue-50 p-3 rounded-md cursor-pointer hover:bg-blue-100" onClick={() => { setCurrentRideRequest(ride); setShowRideRequestModal(true); }}>
+                <li
+                  key={ride._id}
+                  className="bg-blue-50 p-3 rounded-md cursor-pointer hover:bg-blue-100 mb-2"
+                  onClick={() => { setCurrentRideRequest(ride); setShowRideRequestModal(true); }}
+                >
                   <p>From: {ride.origin.locationString}</p>
                   <p>To: {ride.destination.locationString}</p>
                   <p>Fare: £{ride.fare?.toFixed(2) || 'N/A'}</p>
@@ -118,12 +137,15 @@ const DriverHomeScreen = () => {
             </ul>
           }
         </div>
-
-        <button onClick={handleLogout} className="mt-8 w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-md">Logout</button>
       </div>
 
       {showRideRequestModal && currentRideRequest && (
-        <RideRequestModal rideDetails={currentRideRequest} onAccept={handleAcceptRide} onReject={handleRejectRide} onClose={() => { setShowRideRequestModal(false); setCurrentRideRequest(null); }} />
+        <RideRequestModal
+          rideDetails={currentRideRequest}
+          onAccept={handleAcceptRide}
+          onReject={handleRejectRide}
+          onClose={() => { setShowRideRequestModal(false); setCurrentRideRequest(null); }}
+        />
       )}
 
       {showAlert && <CustomAlertDialog message={alertMessage} onClose={() => setShowAlert(false)} />}

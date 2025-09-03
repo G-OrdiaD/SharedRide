@@ -3,7 +3,6 @@ const { User } = require('../models/User'); // Import the base User model
 
 /**
  * Middleware to protect routes and populate req.user.
- * Assumes JWT is sent in Authorization header as 'Bearer TOKEN'.
  */
 const protect = async (req, res, next) => {
   let token;

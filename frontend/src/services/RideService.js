@@ -17,17 +17,13 @@ const handleResponse = async (response) => {
 };
 
 const rideService = {
-  // Fetch available rides for drivers
   getAvailableRides: async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/rides/available`, {
-        headers: getAuthHeader()
-      });
+      const response = await fetch(`${API_BASE_URL}/rides/available`, { headers: getAuthHeader() });
       const rides = await handleResponse(response);
-      
-      // Ensure driver info is included if assigned
       return rides.map(ride => ({
         ...ride,
+        _id: ride._id.toString(),
         driver: ride.driver ? {
           name: ride.driver.name,
           licensePlate: ride.driver.vehicle?.licensePlate || '',
@@ -42,7 +38,6 @@ const rideService = {
     }
   },
 
-  // Request a new ride as passenger
   requestRide: async (rideData) => {
     try {
       const validateCoords = (coords) => {
@@ -58,20 +53,8 @@ const rideService = {
         method: 'POST',
         headers: getAuthHeader(),
         body: JSON.stringify({
-          origin: {
-            locationString: rideData.origin.locationString,
-            location: {
-              lat: rideData.origin.location.coordinates[1],
-              lng: rideData.origin.location.coordinates[0]
-            }
-          },
-          destination: {
-            locationString: rideData.destination.locationString,
-            location: {
-              lat: rideData.destination.location.coordinates[1],
-              lng: rideData.destination.location.coordinates[0]
-            }
-          },
+          origin: { locationString: rideData.origin.locationString, location: { type: 'Point', coordinates: rideData.origin.location.coordinates } },
+          destination: { locationString: rideData.destination.locationString, location: { type: 'Point', coordinates: rideData.destination.location.coordinates } },
           rideType: rideData.rideType
         })
       });
@@ -82,15 +65,10 @@ const rideService = {
     }
   },
 
-  // Accept a ride request (driver)
   acceptRide: async (rideId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/rides/${rideId}/accept`, {
-        method: 'POST',
-        headers: getAuthHeader()
-      });
+      const response = await fetch(`${API_BASE_URL}/rides/${rideId}/accept`, { method: 'POST', headers: getAuthHeader() });
       const ride = await handleResponse(response);
-      
       if (ride.driver) {
         ride.driver = {
           name: ride.driver.name,
@@ -100,7 +78,6 @@ const rideService = {
           color: ride.driver.vehicle?.color || ''
         };
       }
-
       return ride;
     } catch (error) {
       console.error('[RideService] acceptRide error:', error);
@@ -108,13 +85,9 @@ const rideService = {
     }
   },
 
-  // Reject a ride request (driver)
   rejectRide: async (rideId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/rides/${rideId}/reject`, {
-        method: 'POST',
-        headers: getAuthHeader()
-      });
+      const response = await fetch(`${API_BASE_URL}/rides/${rideId}/reject`, { method: 'POST', headers: getAuthHeader() });
       return handleResponse(response);
     } catch (error) {
       console.error('[RideService] rejectRide error:', error);
@@ -122,22 +95,13 @@ const rideService = {
     }
   },
 
-  // Get current active ride for user
   getActiveRide: async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/rides/active`, {
-        headers: getAuthHeader()
-      });
+      const response = await fetch(`${API_BASE_URL}/rides/active`, { headers: getAuthHeader() });
       if (response.status === 404) return null;
       const ride = await handleResponse(response);
       if (ride.driver) {
-        ride.driver = {
-          name: ride.driver.name,
-          licensePlate: ride.driver.vehicle?.licensePlate || '',
-          make: ride.driver.vehicle?.make || '',
-          model: ride.driver.vehicle?.model || '',
-          color: ride.driver.vehicle?.color || ''
-        };
+        ride.driver.vehicle = ride.driver.vehicle || {};
       }
       return ride;
     } catch (error) {
@@ -146,80 +110,12 @@ const rideService = {
     }
   },
 
-  // Complete a ride
   completeRide: async (rideId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/rides/${rideId}/complete`, {
-        method: 'POST',
-        headers: getAuthHeader()
-      });
+      const response = await fetch(`${API_BASE_URL}/rides/${rideId}/complete`, { method: 'POST', headers: getAuthHeader() });
       return handleResponse(response);
     } catch (error) {
       console.error('[RideService] completeRide error:', error);
-      throw error;
-    }
-  },
-
-  // Cancel a ride
-  cancelRide: async (rideId, reason) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/rides/${rideId}/cancel`, {
-        method: 'POST',
-        headers: getAuthHeader(),
-        body: JSON.stringify({ reason })
-      });
-      return handleResponse(response);
-    } catch (error) {
-      console.error('[RideService] cancelRide error:', error);
-      throw error;
-    }
-  },
-
-  // Get ride details
-  getRideDetails: async (rideId) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/rides/${rideId}`, {
-        headers: getAuthHeader()
-      });
-      const ride = await handleResponse(response);
-      if (ride.driver) {
-        ride.driver = {
-          name: ride.driver.name,
-          licensePlate: ride.driver.vehicle?.licensePlate || '',
-          make: ride.driver.vehicle?.make || '',
-          model: ride.driver.vehicle?.model || '',
-          color: ride.driver.vehicle?.color || ''
-        };
-      }
-      return ride;
-    } catch (error) {
-      console.error('[RideService] getRideDetails error:', error);
-      throw error;
-    }
-  },
-
-  // Get ride history
-  getRideHistory: async (filters = {}) => {
-    try {
-      const params = new URLSearchParams(filters).toString();
-      const response = await fetch(`${API_BASE_URL}/rides/history?${params}`, {
-        headers: getAuthHeader()
-      });
-      const rides = await handleResponse(response);
-      return rides.map(ride => {
-        if (ride.driver) {
-          ride.driver = {
-            name: ride.driver.name,
-            licensePlate: ride.driver.vehicle?.licensePlate || '',
-            make: ride.driver.vehicle?.make || '',
-            model: ride.driver.vehicle?.model || '',
-            color: ride.driver.vehicle?.color || ''
-          };
-        }
-        return ride;
-      });
-    } catch (error) {
-      console.error('[RideService] getRideHistory error:', error);
       throw error;
     }
   }

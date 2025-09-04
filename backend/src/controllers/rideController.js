@@ -2,10 +2,11 @@ const Ride = require('../models/Ride');
 const { getFareStrategy } = require('../strategies/fareStrategyFactory');
 const RideManagementSystem = require('../services/RideManagementSystem');
 
+// requestRide allows a passenger to request a new ride
 exports.requestRide = async (req, res) => {
   try {
     const { origin, destination, rideType } = req.body;
-
+    // Basic validation
     const errors = {};
     if (!origin?.locationString) errors.origin = "Missing origin description";
     if (!destination?.locationString) errors.destination = "Missing destination description";
@@ -15,7 +16,7 @@ exports.requestRide = async (req, res) => {
     if (Object.keys(errors).length > 0) {
       return res.status(400).json({ error: "Validation failed", details: errors });
     }
-
+    // Ensure coordinates are numbers
     const originLng = parseFloat(origin.location.coordinates[0]);
     const originLat = parseFloat(origin.location.coordinates[1]);
     const destLng = parseFloat(destination.location.coordinates[0]);
@@ -23,7 +24,8 @@ exports.requestRide = async (req, res) => {
 
     const fareStrategy = getFareStrategy(rideType || 'standard');
     const fare = fareStrategy.calculate([originLat, originLng], [destLat, destLng]);
-
+    
+    // Create and save the ride
     const ride = new Ride({
       passenger: req.user.id,
       origin: {
@@ -48,6 +50,7 @@ exports.requestRide = async (req, res) => {
   }
 };
 
+// acceptRide allows a driver to accept a ride request
 exports.acceptRide = async (req, res) => {
   try {
     const rideManager = RideManagementSystem.getInstance();
@@ -75,6 +78,7 @@ exports.acceptRide = async (req, res) => {
   }
 };
 
+// completeRide marks the ride as completed
 exports.completeRide = async (req, res) => {
   try {
     const rideManager = RideManagementSystem.getInstance();
@@ -95,6 +99,7 @@ exports.completeRide = async (req, res) => {
   }
 };
 
+// Get new ride requests (for drivers to view)
 exports.getNewRides = async (req, res) => {
   try {
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);

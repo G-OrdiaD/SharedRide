@@ -314,12 +314,94 @@ button:disabled {
 }
 
 .modal-content {
-  background-color: var(--white);
+  background: linear-gradient(135deg, var(--light-blue) 0%, var(--white) 100%);
   border-radius: 12px;
   padding: 1.5rem;
   box-shadow: var(--shadow-lg);
-  max-width: 450px;
-  width: 100%;
+  max-width: 500px;
+  width: 90%;
+  margin: 0 auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid var(--light-blue);
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.modal-header h3 {
+  color: var(--dark-blue);
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.close-button {
+  background: var(--light-blue);
+  color: var(--dark-blue);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 1.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: var(--transition-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-button:hover {
+  background: var(--dark-blue);
+  color: var(--white);
+}
+
+.ride-details {
+  margin-bottom: 2rem;
+}
+
+.detail-card {
+  background: var(--white);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow-md);
+}
+
+.detail-label {
+  color: var(--dark-blue);
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.detail-value {
+  color: var(--gray-dark);
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.fare-amount {
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+.capitalize {
+  text-transform: capitalize;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.modal-actions .btn-light-blue {
+  min-width: 120px;
+  padding: 0.75rem 1.5rem;
 }
 
 .alert-dialog {
@@ -391,19 +473,19 @@ button:disabled {
 
 .suggestions-list {
   position: absolute;
-  z-index: 50;
+  z-index: 1000;
   width: 100%;
   margin-top: 0.25rem;
   background: var(--white);
   border: 1px solid #ccc;
   border-radius: 8px;
   box-shadow: var(--shadow-lg);
-  max-height: 200px;
+  max-height: 150px;
   overflow-y: auto;
 }
 
 .suggestion-item {
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 1rem;
   cursor: pointer;
   border-bottom: 1px solid #f0f0f0;
   font-size: 0.95rem;

@@ -1,9 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { User } = require('../models/User'); // Import the base User model
 
-/**
- * Middleware to protect routes and populate req.user.
- */
+//Middleware to protect routes and populate req.user.
 const protect = async (req, res, next) => {
   let token;
 

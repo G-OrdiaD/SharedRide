@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { rideService, placesService } from '../api';
+import rideService from '../services/RideService';
+import { placesService } from '../api';
+
+console.log('RideService being used:', rideService);
+console.log('Does it have requestRide?', 'requestRide' in rideService);
 
 const RideRequestForm = ({ onSubmit }) => {
   const [formData, setFormData] = useState({

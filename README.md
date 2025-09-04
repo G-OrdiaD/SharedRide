@@ -145,8 +145,8 @@ sequenceDiagram
 1. Clone repository
 
 ```bash
-git clone https://github.com/G-OrdiaD/sharedride.git
-cd sharedride
+git clone https://github.com/G-OrdiaD/SharedRide.git
+cd SharedRide
 ```
 
 2. Install backend dependencies
@@ -200,5 +200,7 @@ http://localhost:3000
 Licensed under MIT.
 
 **Project:** SharedRide
+
 **Author:** Ordia David Gbakena
+
 **GitHub:** [https://github.com/G-OrdiaD]

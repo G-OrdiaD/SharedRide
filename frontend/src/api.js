@@ -1,5 +1,6 @@
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = 'http://localhost:5000'; // Backend server URL
 
+// Helper to get headers with optional auth
 const getHeaders = () => {
   const headers = { 'Content-Type': 'application/json' };
   const token = localStorage.getItem('jwtToken');
@@ -7,6 +8,7 @@ const getHeaders = () => {
   return headers;
 };
 
+// Generic function to handle API requests
 const handleRequest = async (endpoint, options = {}) => {
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -28,16 +30,7 @@ const handleRequest = async (endpoint, options = {}) => {
   }
 };
 
-export const rideService = {
-  requestRide: (rideData) => handleRequest('/api/rides/request', {
-    method: 'POST',
-    body: JSON.stringify(rideData)
-  }),
-  acceptRide: (rideId) => handleRequest(`/api/rides/${rideId}/accept`, { method: 'PUT' }),
-  completeRide: (rideId) => handleRequest(`/api/rides/${rideId}/complete`, { method: 'PUT' }),
-  getNewRides: () => handleRequest('/api/rides/new-rides')
-};
-
+// AuthService for login, registration, and profile fetching
 export const authService = {
   login: async ({ email, password }) => {
     const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
@@ -62,6 +55,7 @@ export const authService = {
   getProfile: () => handleRequest('/api/auth/me')
 };
 
+// PlacesService interacting with backend proxy to Google Places API
 export const placesService = {
   autocomplete: async (input) => {
     const data = await handleRequest(`/api/places/autocomplete?input=${encodeURIComponent(input)}`);
@@ -79,6 +73,7 @@ export const placesService = {
   }
 };
 
+// UserService for profile updates
 export const userService = {
   getProfile: () => handleRequest('/api/auth/me'),
   updateProfile: (data) => handleRequest('/api/auth/me', {

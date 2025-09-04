@@ -3,6 +3,7 @@ const Ride = require('../models/Ride');
 const { Driver } = require('../models/User');
 const { getFareStrategy } = require('../strategies/fareStrategyFactory');
 
+// Singleton Ride Management System
 class RideManagementSystem extends EventEmitter {
   constructor() {
     super();
@@ -21,7 +22,7 @@ class RideManagementSystem extends EventEmitter {
     return RideManagementSystem.instance;
   }
 
-  async createRide(passengerId, origin, destination, rideType = 'standard') {
+  async createRide(passengerId, origin, destination, rideType = 'standard') {  // Create a new ride request
     try {
       // Calculate fare
       const fareStrategy = getFareStrategy(rideType);
@@ -47,7 +48,7 @@ class RideManagementSystem extends EventEmitter {
     }
   }
 
-  async findAvailableDrivers(originCoordinates, rideType, maxDistance = 5000) {
+  async findAvailableDrivers(originCoordinates, rideType, maxDistance = 5000) { // 5 km default
     try {
       return await Driver.find({
         isAvailable: true,
@@ -66,7 +67,7 @@ class RideManagementSystem extends EventEmitter {
     }
   }
 
-  async assignDriver(rideId, driverId) {
+  async assignDriver(rideId, driverId) { // Assign a driver to a ride
     try {
       const ride = await Ride.findById(rideId);
       if (!ride) throw new Error('Ride not found');
@@ -97,7 +98,7 @@ class RideManagementSystem extends EventEmitter {
     }
   }
 
-  async completeRide(rideId) {
+  async completeRide(rideId) { // Mark ride as completed
     try {
       const ride = await Ride.findById(rideId);
       if (!ride) throw new Error('Ride not found');
@@ -126,7 +127,7 @@ class RideManagementSystem extends EventEmitter {
     }
   }
 
-  async cancelRide(rideId, reason) {
+  async cancelRide(rideId, reason) { // Cancel a ride
     try {
       const ride = await Ride.findById(rideId);
       if (!ride) throw new Error('Ride not found');
@@ -149,7 +150,7 @@ class RideManagementSystem extends EventEmitter {
     }
   }
 
-  async getRideStatus(rideId) {
+  async getRideStatus(rideId) { // Get current status of a ride
     try {
       const ride = await Ride.findById(rideId)
         .populate('passenger', 'name phone')
@@ -164,4 +165,4 @@ class RideManagementSystem extends EventEmitter {
   }
 }
 
-module.exports = RideManagementSystem;
+module.exports = RideManagementSystem; // Export the singleton instance

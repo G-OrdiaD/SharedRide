@@ -30,7 +30,7 @@ const DriverHomeScreen = () => {
     if (!token || isFetching) return;
     setIsFetching(true);
     try {
-      const rides = await rideService.getAvailableRides();
+      const rides = await rideService.getNewRides();
       const recentRides = rides.filter(ride => !acceptedRides.has(ride._id));
       setNewRideRequests(recentRides);
 
@@ -148,10 +148,21 @@ const DriverHomeScreen = () => {
 
       {showRideRequestModal && currentRideRequest && (
         <RideRequestModal
-          rideDetails={currentRideRequest}
-          onAccept={handleAcceptRide}
-          onReject={handleRejectRide}
-          onClose={() => { setShowRideRequestModal(false); setCurrentRideRequest(null); }}
+          rideDetails={currentRideRequest} // Pass the entire ride object
+          onAccept={() => { // Accept the ride and close modal
+            handleAcceptRide();
+            setShowRideRequestModal(false); 
+            setCurrentRideRequest(null); 
+          }}
+          onReject={() => { // Reject the ride and close modal
+            handleRejectRide();   
+            setShowRideRequestModal(false);
+            setCurrentRideRequest(null); 
+          }}
+          onClose={() => {
+            setShowRideRequestModal(false); // Close modal
+            setCurrentRideRequest(null); // Clear current ride
+          }}
         />
       )}
 

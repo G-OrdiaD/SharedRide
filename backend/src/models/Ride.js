@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const crypto = require('crypto');
-const config = require('../config/db'); // Import config to access the encryption key
+const config = require('../config/db');
 const { locationEncryptionKey } = require('../config/db');
 
 // Encryption utilities
@@ -77,7 +77,8 @@ function decryptCoordinates(encrypted) {
   }
 }
 
-const RideSchema = new mongoose.Schema({
+// Ride schema definition
+const RideSchema = new mongoose.Schema({ 
   passenger: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -122,7 +123,7 @@ const RideSchema = new mongoose.Schema({
         required: true
       },
       coordinates: {
-        type: [Number], // Store as simple array of numbers
+        type: [Number],
         required: true
       },
       encrypted: {
@@ -166,9 +167,8 @@ const RideSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Pre-save hook to encrypt coordinates - PROPERLY FIXED
+// Pre-save hook to encrypt coordinates before saving
 RideSchema.pre('save', function(next) {
-  // Only encrypt if we have valid coordinates and they're not already encrypted
   if (this.isModified('origin.location.coordinates') && 
       !this.origin.location.encrypted &&
       Array.isArray(this.origin.location.coordinates) &&
@@ -198,7 +198,7 @@ RideSchema.pre('save', function(next) {
   next();
 });
 
-// Method to decrypt location data for frontend use
+// Method to decrypt location data for frontend use 
 RideSchema.methods.getDecryptedLocations = function() {
   const rideObj = this.toObject();
   

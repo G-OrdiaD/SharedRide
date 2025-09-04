@@ -82,79 +82,155 @@ export default function Auth() {
   const handleHomeClick = () => navigate('/');
 
   return (
-    <div className="min-h-screen bg-silver flex items-center justify-center p-4 font-modern">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md relative">
-
-        {/* Home Button */}
+    <div className="auth-page">
+      {/* Blue header rectangle for the whole page */}
+      <div className="auth-header">
         <button
           onClick={handleHomeClick}
-          className="absolute top-4 left-4 bg-light-blue px-4 py-2 rounded-md text-white font-bold hover:opacity-90 transition-all shadow-md"
+          className="auth-home-btn"
         >
           Home
         </button>
+      </div>
 
-        <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">
-          {isRegister ? 'Register' : 'Login'}
-        </h2>
+      {/* Centered form container */}
+      <div className="auth-container">
+        <div className="auth-form">
+          <h2>{isRegister ? 'Register' : 'Login'}</h2>
 
-        {message && (
-          <div className={`p-3 mb-4 rounded-md text-sm ${message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-            {message.text}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          {isRegister && (
-            <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2">Name:</label>
-              <input type="text" name="name" value={formData.name} onChange={handleChange} className="shadow border rounded w-full py-3 px-4" required />
+          {message && (
+            <div className={message.type === 'success' ? 'success-msg' : 'error-msg'}>
+              {message.text}
             </div>
           )}
 
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2">Email:</label>
-            <input type="email" name="email" value={formData.email} onChange={handleChange} className="shadow border rounded w-full py-3 px-4" required />
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2">Password:</label>
-            <input type="password" name="password" value={formData.password} onChange={handleChange} className="shadow border rounded w-full py-3 px-4" required />
-          </div>
-
-          {isRegister && (
-            <>
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2">Phone:</label>
-                <input type="text" name="phone" value={formData.phone} onChange={handleChange} className="shadow border rounded w-full py-3 px-4" required />
+          <form onSubmit={handleSubmit} className={loading ? 'loading' : ''}>
+            {isRegister && (
+              <div className="form-group">
+                <label>Name:</label>
+                <input 
+                  type="text" 
+                  name="name" 
+                  value={formData.name} 
+                  onChange={handleChange} 
+                  required 
+                />
               </div>
+            )}
 
-              <div className="mb-4">
-                <label className="block text-gray-700 text-sm font-bold mb-2">Register as:</label>
-                <select name="role" value={formData.role} onChange={handleChange} className="shadow border rounded w-full py-3 px-4">
-                  <option value="passenger">Passenger</option>
-                  <option value="driver">Driver</option>
-                </select>
-              </div>
+            <div className="form-group">
+              <label>Email:</label>
+              <input 
+                type="email" 
+                name="email" 
+                value={formData.email} 
+                onChange={handleChange} 
+                required 
+              />
+            </div>
 
-              {formData.role === 'driver' && (
-                <div className="space-y-2 mb-4">
-                  <input type="text" name="licenseNumber" placeholder="Driver License Number" value={formData.licenseNumber} onChange={handleChange} className="shadow border rounded w-full py-3 px-4" required />
-                  <input type="text" name="vehicleMake" placeholder="Vehicle Make" value={formData.vehicleMake} onChange={handleChange} className="shadow border rounded w-full py-3 px-4" required />
-                  <input type="text" name="vehicleModel" placeholder="Vehicle Model" value={formData.vehicleModel} onChange={handleChange} className="shadow border rounded w-full py-3 px-4" required />
-                  <input type="text" name="vehiclePlate" placeholder="License Plate" value={formData.vehiclePlate} onChange={handleChange} className="shadow border rounded w-full py-3 px-4" required />
-                  <input type="text" name="vehicleColor" placeholder="Vehicle Color" value={formData.vehicleColor} onChange={handleChange} className="shadow border rounded w-full py-3 px-4" required />
+            <div className="form-group">
+              <label>Password:</label>
+              <input 
+                type="password" 
+                name="password" 
+                value={formData.password} 
+                onChange={handleChange} 
+                required 
+              />
+            </div>
+
+            {isRegister && (
+              <>
+                <div className="form-group">
+                  <label>Phone:</label>
+                  <input 
+                    type="text" 
+                    name="phone" 
+                    value={formData.phone} 
+                    onChange={handleChange} 
+                    required 
+                  />
                 </div>
-              )}
-            </>
-          )}
 
-          <button type="submit" disabled={loading} className="bg-maroon hover:bg-maroon-dark text-white font-bold py-3 px-6 rounded w-full mt-4 transition-all shadow-md hover:shadow-lg">
-            {loading ? (isRegister ? 'Registering...' : 'Logging in...') : (isRegister ? 'Register' : 'Login')}
-          </button>
-        </form>
+                <div className="form-group">
+                  <label>Register as:</label>
+                  <select name="role" value={formData.role} onChange={handleChange}>
+                    <option value="passenger">Passenger</option>
+                    <option value="driver">Driver</option>
+                  </select>
+                </div>
 
-        <div className="mt-4 text-center">
-          <button onClick={() => setIsRegister(!isRegister)} className="text-maroon hover:underline font-bold">
+                {formData.role === 'driver' && (
+                  <>
+                    <div className="form-group">
+                      <label>Driver License Number:</label>
+                      <input 
+                        type="text" 
+                        name="licenseNumber" 
+                        value={formData.licenseNumber} 
+                        onChange={handleChange} 
+                        required 
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Vehicle Make:</label>
+                      <input 
+                        type="text" 
+                        name="vehicleMake" 
+                        value={formData.vehicleMake} 
+                        onChange={handleChange} 
+                        required 
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Vehicle Model:</label>
+                      <input 
+                        type="text" 
+                        name="vehicleModel" 
+                        value={formData.vehicleModel} 
+                        onChange={handleChange} 
+                        required 
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>License Plate:</label>
+                      <input 
+                        type="text" 
+                        name="vehiclePlate" 
+                        value={formData.vehiclePlate} 
+                        onChange={handleChange} 
+                        required 
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Vehicle Color:</label>
+                      <input 
+                        type="text" 
+                        name="vehicleColor" 
+                        value={formData.vehicleColor} 
+                        onChange={handleChange} 
+                        required 
+                      />
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+
+            <button 
+              type="submit" 
+              disabled={loading} 
+              className="btn-light-blue"
+            >
+              {loading ? (isRegister ? 'Registering...' : 'Logging in...') : (isRegister ? 'Register' : 'Login')}
+            </button>
+          </form>
+
+          <button 
+            onClick={() => setIsRegister(!isRegister)} 
+            className="btn-auth-toggle"
+          >
             {isRegister ? 'Already have an account? Login' : "Don't have an account? Register"}
           </button>
         </div>

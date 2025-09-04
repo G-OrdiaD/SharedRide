@@ -5,12 +5,12 @@ const IndexScreen = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="centered-page">
-      <div className="text-center mb-10">
-        <h1 className="text-4xl font-bold text-gray-dark mb-4">Welcome to SharedRide</h1>
-        <p className="text-xl text-gray-medium mb-8">For an awesome ride experience</p>
+    <div className="home-page">
+      <div className="home-header">
+        <h1>Welcome to SharedRide</h1>
+        <p>For an awesome ride experience</p>
         
-        <div className="flex justify-center gap-6">
+        <div className="home-buttons">
           <button 
             onClick={() => navigate('/auth')}
             className="btn-maroon"

@@ -66,46 +66,54 @@ const PassengerHomeScreen = () => {
   if (!user || user.role !== 'passenger') return <p>Redirecting to login...</p>;
 
   return (
-    <div className="min-h-screen bg-silver flex flex-col items-center justify-center p-4 font-modern">
-
-      {/* Top Buttons */}
-      <div className="w-full max-w-md flex justify-between mb-6">
-        <button
-          onClick={handleGoHome}
-          className="bg-light-blue hover:bg-light-blue-dark text-white font-bold py-2 px-4 rounded transition-all"
-        >
-          ← Home
-        </button>
-        <button
-          onClick={handleLogout}
-          className="bg-light-blue hover:bg-light-blue-dark text-white font-bold py-2 px-4 rounded transition-all"
-        >
-          Logout
-        </button>
+    <div className="min-h-screen bg-silver flex flex-col items-center p-4 font-modern">
+      
+      {/* Blue Header Rectangle */}
+      <div style={{backgroundColor: '#1E40AF', width: '100%', padding: '0.75rem 1.5rem', marginBottom: '1.5rem'}}>
+        <div style={{maxWidth: '28rem', margin: '0 auto', display: 'flex', justifyContent: 'space-between'}}>
+          <button
+            onClick={handleGoHome}
+            style={{backgroundColor: '#ADD8E6', color: 'white', fontWeight: '600', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: 'none', cursor: 'pointer'}}
+            onMouseOver={(e) => e.target.style.backgroundColor = '#1E3A8A'}
+            onMouseOut={(e) => e.target.style.backgroundColor = '#ADD8E6'}
+          >
+            ← Home
+          </button>
+          <button
+            onClick={handleLogout}
+            style={{backgroundColor: '#ADD8E6', color: 'white', fontWeight: '600', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: 'none', cursor: 'pointer'}}
+            onMouseOver={(e) => e.target.style.backgroundColor = '#1E3A8A'}
+            onMouseOut={(e) => e.target.style.backgroundColor = '#ADD8E6'}
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
-      {/* Main Content */}
-      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md text-center">
+      {/* Main Content - Centered */}
+      <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%'}}>
+        <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md text-center">
 
-        <p className="text-gray-700 mb-2">Welcome, <span className="font-semibold">{user.name}</span>!</p>
+          <p className="text-gray-700 mb-2">Welcome, <span className="font-semibold">{user.name}</span>!</p>
 
-        <div className="border-t border-gray-200 pt-6 mt-6 text-left">
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">Book a Ride</h3>
-          <RideRequestForm onSubmit={handleRideRequest} />
+          <div className="border-t border-gray-200 pt-6 mt-6 text-left">
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">Book a Ride</h3>
+            <RideRequestForm onSubmit={handleRideRequest} />
+          </div>
+
+          {isFetchingRide ? <p className="mt-4">Checking for active rides...</p> :
+            currentRide && currentRide.driver ? (
+              <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg shadow-sm">
+                <h3 className="font-semibold">Your Driver</h3>
+                <p>Name: {currentRide.driver.name}</p>
+                <p>Vehicle Number: {currentRide.driver.vehicle?.licensePlate || 'N/A'}</p>
+                <p>Model: {currentRide.driver.vehicle?.model || 'N/A'}</p>
+                <p>Color: {currentRide.driver.vehicle?.color || 'N/A'}</p>
+              </div>
+            ) : <p className="mt-4">No active rides at the moment</p>
+          }
+
         </div>
-
-        {isFetchingRide ? <p className="mt-4">Checking for active rides...</p> :
-          currentRide && currentRide.driver ? (
-            <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg shadow-sm">
-              <h3 className="font-semibold">Your Driver</h3>
-              <p>Name: {currentRide.driver.name}</p>
-              <p>Vehicle Number: {currentRide.driver.vehicle?.licensePlate || 'N/A'}</p>
-              <p>Model: {currentRide.driver.vehicle?.model || 'N/A'}</p>
-              <p>Color: {currentRide.driver.vehicle?.color || 'N/A'}</p>
-            </div>
-          ) : <p className="mt-4">No active rides at the moment</p>
-        }
-
       </div>
 
       {showAlert && <CustomAlertDialog message={alertMessage} onClose={() => setShowAlert(false)} />}

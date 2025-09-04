@@ -77,7 +77,7 @@ const PassengerHomeScreen = () => {
             onMouseOver={(e) => e.target.style.backgroundColor = '#1E3A8A'}
             onMouseOut={(e) => e.target.style.backgroundColor = '#ADD8E6'}
           >
-            ← Home
+             Home
           </button>
           <button
             onClick={handleLogout}

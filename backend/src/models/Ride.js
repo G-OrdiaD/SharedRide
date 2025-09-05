@@ -79,14 +79,24 @@ function decryptCoordinates(encrypted) {
 
 // Ride schema definition
 const RideSchema = new mongoose.Schema({ 
-  passenger: {
+  passenger: { // Reference to Passenger user
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  driver: {
+  driver: { // Reference to Driver user
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  },
+   passengerRating: { // Rating FROM driver TO passenger
+    score: { type: Number, min: 1, max: 5 },
+    feedback: String,
+    submittedAt: Date
+  },
+  driverRating: { // Rating FROM passenger TO driver
+    score: { type: Number, min: 1, max: 5 },
+    feedback: String,
+    submittedAt: Date
   },
   origin: {
     locationString: { 

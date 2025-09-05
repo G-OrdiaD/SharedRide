@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import rideService from '../services/RideService';
+import rideService from '../services/rideService';
 import { placesService } from '../api';
 
 console.log('RideService being used:', rideService);

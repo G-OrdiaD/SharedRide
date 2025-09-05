@@ -1,0 +1,10 @@
+const DriverEarnings = () => {
+
+  // Real earnings calculated from completed rides
+  const [earnings, setEarnings] = useState({
+    today: calculateEarnings(getTodayRides()),
+    weekly: calculateEarnings(getWeeklyRides()),
+    total: calculateEarnings(getAllCompletedRides()),
+    usdtEarnings: convertToUSDT(earnings) // Real conversion
+  });
+};

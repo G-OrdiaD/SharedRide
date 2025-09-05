@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../features/authSlice';
 import RideRequestForm from '../components/RideRequestForm';
-import rideService from '../services/RideService';
+import rideService from '../services/rideService';
 import CustomAlertDialog from '../components/CustomAlertDialog';
 
 const PassengerHomeScreen = () => {

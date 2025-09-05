@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../features/authSlice';
-import rideService from '../services/RideService';
+import rideService from '../services/rideService';
 import RideRequestModal from '../components/RideRequestModal';
 import CustomAlertDialog from '../components/CustomAlertDialog';
 

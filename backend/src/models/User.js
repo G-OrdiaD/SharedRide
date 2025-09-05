@@ -41,6 +41,7 @@ const User = mongoose.model('User', UserSchema);
 
 // Passenger discriminator
 const PassengerSchema = new mongoose.Schema({
+  walletBalance: { type: Number, default: 0 },
   paymentMethods: [{
     type: String,
     details: String

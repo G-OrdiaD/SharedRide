@@ -40,8 +40,8 @@ const ratingsSlice = createSlice({
       })
       .addCase(fetchRatings.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload.error;
-      });
+        state.error = action.payload?.error || action.error?.message || 'Failed to fetch ratings';
+    })
   },
 });
 

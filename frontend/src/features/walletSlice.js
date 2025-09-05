@@ -65,8 +65,8 @@ const walletSlice = createSlice({
       })
       .addCase(topUpWallet.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload.error;
-      });
+        state.error = action.payload?.error || action.error?.message || 'Failed to top up wallet';
+      })
   },
 });
 

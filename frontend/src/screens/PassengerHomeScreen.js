@@ -40,6 +40,8 @@ const PassengerHomeScreen = () => {
 
   const handleLogout = () => { dispatch(logout()); navigate('/'); };
   const handleGoHome = () => navigate('/');
+  const handleGoToWallet = () => navigate('/passenger/wallet');
+  const handleGoToProfile = () => navigate('/passenger/profile');
 
   const handleRideRequest = async (rideData) => {
     try {
@@ -70,18 +72,34 @@ const PassengerHomeScreen = () => {
       
       {/* Blue Header Rectangle */}
       <div style={{backgroundColor: '#1E40AF', width: '100%', padding: '0.75rem 1.5rem', marginBottom: '1.5rem'}}>
-        <div style={{maxWidth: '28rem', margin: '0 auto', display: 'flex', justifyContent: 'space-between'}}>
+        <div style={{maxWidth: '28rem', margin: '0 auto', display: 'flex', justifyContent: 'space-between', gap: '0.5rem'}}>
           <button
             onClick={handleGoHome}
-            style={{backgroundColor: '#ADD8E6', color: 'white', fontWeight: '600', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: 'none', cursor: 'pointer'}}
+            style={{backgroundColor: '#ADD8E6', color: 'white', fontWeight: '600', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: 'none', cursor: 'pointer', flex: 1}}
             onMouseOver={(e) => e.target.style.backgroundColor = '#1E3A8A'}
             onMouseOut={(e) => e.target.style.backgroundColor = '#ADD8E6'}
           >
-             Home
+            Home
+          </button>
+          <button
+            onClick={handleGoToWallet}
+            style={{backgroundColor: '#ADD8E6', color: 'white', fontWeight: '600', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: 'none', cursor: 'pointer', flex: 1}}
+            onMouseOver={(e) => e.target.style.backgroundColor = '#1E3A8A'}
+            onMouseOut={(e) => e.target.style.backgroundColor = '#ADD8E6'}
+          >
+            Wallet
+          </button>
+          <button
+            onClick={handleGoToProfile}
+            style={{backgroundColor: '#ADD8E6', color: 'white', fontWeight: '600', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: 'none', cursor: 'pointer', flex: 1}}
+            onMouseOver={(e) => e.target.style.backgroundColor = '#1E3A8A'}
+            onMouseOut={(e) => e.target.style.backgroundColor = '#ADD8E6'}
+          >
+            Profile
           </button>
           <button
             onClick={handleLogout}
-            style={{backgroundColor: '#ADD8E6', color: 'white', fontWeight: '600', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: 'none', cursor: 'pointer'}}
+            style={{backgroundColor: '#ADD8E6', color: 'white', fontWeight: '600', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: 'none', cursor: 'pointer', flex: 1}}
             onMouseOver={(e) => e.target.style.backgroundColor = '#1E3A8A'}
             onMouseOut={(e) => e.target.style.backgroundColor = '#ADD8E6'}
           >
@@ -90,7 +108,7 @@ const PassengerHomeScreen = () => {
         </div>
       </div>
 
-      {/* Main Content - Centered */}
+      {/* Rest of the component remains exactly the same */}
       <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%'}}>
         <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md text-center">
 

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Image, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
 import { useSelector } from 'react-redux';
-import { fetchRatings } from '../../features/ratingsSlice';
+import { fetchRatings } from '../features/ratingsSlice';
 
 const DriverProfile = () => {
   const { user } = useSelector((state) => state.auth);
@@ -36,116 +35,116 @@ const DriverProfile = () => {
 
   if (!profile || !user) {
     return (
-      <View className="loading-container">
-        <ActivityIndicator size="large" />
-        <Text className="loading-text">Loading profile...</Text>
-      </View>
+      <div className="loading-container">
+        <div>Loading...</div>
+        <div className="loading-text">Loading profile...</div>
+      </div>
     );
   }
 
   return (
-    <ScrollView className="profile-container">
-      <View className="profile-header">
-        <View className="avatar-container">
+    <div className="profile-container">
+      <div className="profile-header">
+        <div className="avatar-container">
           {profile.profilePicture ? (
-            <Image source={{ uri: profile.profilePicture }} className="avatar-image" />
+            <img src={profile.profilePicture} className="avatar-image" alt="Profile" />
           ) : (
-            <View className="avatar-placeholder">
-              <Text className="avatar-text">{user.name.charAt(0).toUpperCase()}</Text>
-            </View>
+            <div className="avatar-placeholder">
+              <div className="avatar-text">{user.name.charAt(0).toUpperCase()}</div>
+            </div>
           )}
-          <TouchableOpacity className="upload-button">
-            <Text className="upload-text">Upload Photo</Text>
-          </TouchableOpacity>
-        </View>
+          <button className="upload-button">
+            <div className="upload-text">Upload Photo</div>
+          </button>
+        </div>
 
-        <Text className="user-name">{user.name}</Text>
-        <Text className="driver-rating">⭐ {averageRating.toFixed(1)} • {profile.totalTrips} trips</Text>
-      </View>
+        <div className="user-name">{user.name}</div>
+        <div className="driver-rating">⭐ {averageRating.toFixed(1)} • {profile.totalTrips} trips</div>
+      </div>
 
-      <View className="profile-section">
-        <Text className="section-title">Personal Information</Text>
+      <div className="profile-section">
+        <div className="section-title">Personal Information</div>
         
-        <View className="field-group">
-          <Text className="field-label">Full Name</Text>
-          <Text className="field-value">{user.name}</Text>
-          <Text className="field-note">Cannot be changed</Text>
-        </View>
+        <div className="field-group">
+          <div className="field-label">Full Name</div>
+          <div className="field-value">{user.name}</div>
+          <div className="field-note">Cannot be changed</div>
+        </div>
 
-        <View className="field-group">
-          <Text className="field-label">Email</Text>
-          <Text className="field-value">{user.email}</Text>
-        </View>
+        <div className="field-group">
+          <div className="field-label">Email</div>
+          <div className="field-value">{user.email}</div>
+        </div>
 
-        <View className="field-group">
-          <Text className="field-label">Phone Number</Text>
-          <TextInput
+        <div className="field-group">
+          <div className="field-label">Phone Number</div>
+          <input
             className="editable-input"
             value={editableFields.phone}
-            onChangeText={(text) => setEditableFields({ ...editableFields, phone: text })}
-            keyboardType="phone-pad"
+            onChange={(e) => setEditableFields({ ...editableFields, phone: e.target.value })}
+            type="tel"
           />
-        </View>
+        </div>
 
-        <View className="field-group">
-          <Text className="field-label">Home Address</Text>
-          <TextInput
+        <div className="field-group">
+          <div className="field-label">Home Address</div>
+          <textarea
             className="editable-input"
             value={editableFields.homeAddress}
-            onChangeText={(text) => setEditableFields({ ...editableFields, homeAddress: text })}
-            multiline
+            onChange={(e) => setEditableFields({ ...editableFields, homeAddress: e.target.value })}
+            rows="3"
           />
-        </View>
-      </View>
+        </div>
+      </div>
 
-      <View className="profile-section">
-        <Text className="section-title">Driver Information</Text>
+      <div className="profile-section">
+        <div className="section-title">Driver Information</div>
         
-        <View className="field-group">
-          <Text className="field-label">License Number</Text>
-          <Text className="field-value">{profile.licenseNumber}</Text>
-          <Text className="field-note">Cannot be changed</Text>
-        </View>
+        <div className="field-group">
+          <div className="field-label">License Number</div>
+          <div className="field-value">{profile.licenseNumber}</div>
+          <div className="field-note">Cannot be changed</div>
+        </div>
 
-        <View className="field-group">
-          <Text className="field-label">Vehicle Make</Text>
-          <Text className="field-value">{profile.vehicle.make || 'Not set'}</Text>
-        </View>
+        <div className="field-group">
+          <div className="field-label">Vehicle Make</div>
+          <div className="field-value">{profile.vehicle.make || 'Not set'}</div>
+        </div>
 
-        <View className="field-group">
-          <Text className="field-label">Vehicle Model</Text>
-          <Text className="field-value">{profile.vehicle.model || 'Not set'}</Text>
-        </View>
+        <div className="field-group">
+          <div className="field-label">Vehicle Model</div>
+          <div className="field-value">{profile.vehicle.model || 'Not set'}</div>
+        </div>
 
-        <View className="field-group">
-          <Text className="field-label">License Plate</Text>
-          <Text className="field-value">{profile.vehicle.licensePlate || 'Not set'}</Text>
-        </View>
+        <div className="field-group">
+          <div className="field-label">License Plate</div>
+          <div className="field-value">{profile.vehicle.licensePlate || 'Not set'}</div>
+        </div>
 
-        <View className="field-group">
-          <Text className="field-label">Vehicle Color</Text>
-          <Text className="field-value">{profile.vehicle.color || 'Not set'}</Text>
-        </View>
-      </View>
+        <div className="field-group">
+          <div className="field-label">Vehicle Color</div>
+          <div className="field-value">{profile.vehicle.color || 'Not set'}</div>
+        </div>
+      </div>
 
-      <View className="profile-section">
-        <Text className="section-title">Ratings & Feedback</Text>
+      <div className="profile-section">
+        <div className="section-title">Ratings & Feedback</div>
         {isLoading ? (
-          <ActivityIndicator size="small" />
+          <div>Loading...</div>
         ) : (
           feedbackList.map((feedback, index) => (
-            <View key={index} className="feedback-item">
-              <Text className="feedback-rating">⭐ {feedback.score}</Text>
-              {feedback.feedback && <Text className="feedback-text">"{feedback.feedback}"</Text>}
-            </View>
+            <div key={index} className="feedback-item">
+              <div className="feedback-rating">⭐ {feedback.score}</div>
+              {feedback.feedback && <div className="feedback-text">"{feedback.feedback}"</div>}
+            </div>
           ))
         )}
-      </View>
+      </div>
 
-      <TouchableOpacity className="save-button" onPress={handleSave}>
-        <Text className="save-button-text">Save Changes</Text>
-      </TouchableOpacity>
-    </ScrollView>
+      <button className="save-button" onClick={handleSave}>
+        <div className="save-button-text">Save Changes</div>
+      </button>
+    </div>
   );
 };
 

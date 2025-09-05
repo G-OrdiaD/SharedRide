@@ -7,7 +7,11 @@ import { initializeAuth } from './features/authSlice';
 import IndexScreen from './screens/IndexScreen';
 import Auth from './components/Auth';
 import PassengerHomeScreen from './screens/PassengerHomeScreen';
-import DriverHomeScreen from './screens/DriverHomeScreen';
+import PassengerProfile from './screens/PassengerProfile';
+import PassengerWallet from './screens/PassengerWallet';
+import DriverHomeScreen from './screens/DriverHomeScreen'
+import DriverProfile from './screens/DriverProfile';
+import DriverEarnings from './screens/DriverEarnings';
 import RideScreen from './screens/RideScreen';
 
 function AppContent() {
@@ -33,6 +37,10 @@ function AppContent() {
       <Route path="/passenger" element={<PassengerHomeScreen />} />
       <Route path="/driver" element={<DriverHomeScreen />} />
       <Route path="/ride" element={<RideScreen />} />
+      <Route path="/passenger/wallet" element={<PassengerWallet />} />
+      <Route path="/passenger/profile" element={<PassengerProfile />} />
+      <Route path="/driver/earnings" element={<DriverEarnings />} />
+      <Route path="/driver/profile" element={<DriverProfile />} />
     </Routes>
   );
 }

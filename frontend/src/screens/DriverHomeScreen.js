@@ -88,6 +88,8 @@ const DriverHomeScreen = () => {
 
   const handleLogout = () => { dispatch(logout()); navigate('/'); };
   const handleGoHome = () => navigate('/');
+  const handleGoToEarnings = () => navigate('/driver/earnings');
+  const handleGoToProfile = () => navigate('/driver/profile');
 
   if (authStatus !== 'succeeded') return <p>Authenticating...</p>;
   if (!user || !isDriver) return <p>Redirecting to login...</p>;
@@ -97,18 +99,34 @@ const DriverHomeScreen = () => {
       
       {/* Blue Header Rectangle */}
       <div style={{backgroundColor: '#1E40AF', width: '100%', padding: '0.75rem 1.5rem', marginBottom: '1.5rem'}}>
-        <div style={{maxWidth: '28rem', margin: '0 auto', display: 'flex', justifyContent: 'space-between'}}>
+        <div style={{maxWidth: '28rem', margin: '0 auto', display: 'flex', justifyContent: 'space-between', gap: '0.5rem'}}>
           <button
             onClick={handleGoHome}
-            style={{backgroundColor: '#ADD8E6', color: 'white', fontWeight: '600', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: 'none', cursor: 'pointer'}}
+            style={{backgroundColor: '#ADD8E6', color: 'white', fontWeight: '600', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: 'none', cursor: 'pointer', flex: 1}}
             onMouseOver={(e) => e.target.style.backgroundColor = '#1E3A8A'}
             onMouseOut={(e) => e.target.style.backgroundColor = '#ADD8E6'}
           >
-             Home
+            Home
+          </button>
+          <button
+            onClick={handleGoToEarnings}
+            style={{backgroundColor: '#ADD8E6', color: 'white', fontWeight: '600', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: 'none', cursor: 'pointer', flex: 1}}
+            onMouseOver={(e) => e.target.style.backgroundColor = '#1E3A8A'}
+            onMouseOut={(e) => e.target.style.backgroundColor = '#ADD8E6'}
+          >
+            Earnings
+          </button>
+          <button
+            onClick={handleGoToProfile}
+            style={{backgroundColor: '#ADD8E6', color: 'white', fontWeight: '600', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: 'none', cursor: 'pointer', flex: 1}}
+            onMouseOver={(e) => e.target.style.backgroundColor = '#1E3A8A'}
+            onMouseOut={(e) => e.target.style.backgroundColor = '#ADD8E6'}
+          >
+            Profile
           </button>
           <button
             onClick={handleLogout}
-            style={{backgroundColor: '#ADD8E6', color: 'white', fontWeight: '600', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: 'none', cursor: 'pointer'}}
+            style={{backgroundColor: '#ADD8E6', color: 'white', fontWeight: '600', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: 'none', cursor: 'pointer', flex: 1}}
             onMouseOver={(e) => e.target.style.backgroundColor = '#1E3A8A'}
             onMouseOut={(e) => e.target.style.backgroundColor = '#ADD8E6'}
           >
@@ -117,7 +135,7 @@ const DriverHomeScreen = () => {
         </div>
       </div>
 
-      {/* Main Content - Centered */}
+      {/* Rest of the component remains exactly the same */}
       <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%'}}>
         <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md text-center">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">Driver Dashboard</h2>
@@ -148,20 +166,20 @@ const DriverHomeScreen = () => {
 
       {showRideRequestModal && currentRideRequest && (
         <RideRequestModal
-          rideDetails={currentRideRequest} // Pass the entire ride object
-          onAccept={() => { // Accept the ride and close modal
+          rideDetails={currentRideRequest}
+          onAccept={() => {
             handleAcceptRide();
             setShowRideRequestModal(false); 
             setCurrentRideRequest(null); 
           }}
-          onReject={() => { // Reject the ride and close modal
+          onReject={() => {
             handleRejectRide();   
             setShowRideRequestModal(false);
             setCurrentRideRequest(null); 
           }}
           onClose={() => {
-            setShowRideRequestModal(false); // Close modal
-            setCurrentRideRequest(null); // Clear current ride
+            setShowRideRequestModal(false);
+            setCurrentRideRequest(null);
           }}
         />
       )}

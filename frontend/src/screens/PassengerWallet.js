@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchWallet, topUpWallet } from '../../features/walletSlice';
+import { fetchWallet, topUpWallet } from '../features/walletSlice';
 
 const PassengerWallet = () => {
   const dispatch = useDispatch();
@@ -31,70 +30,70 @@ const PassengerWallet = () => {
   const quickAmounts = [10, 20, 50, 100];
 
   return (
-    <ScrollView className="wallet-container">
-      <View className="balance-card">
-        <Text className="balance-label">Wallet Balance</Text>
-        <Text className="balance-amount">£{balance.toFixed(2)}</Text>
-        <Text className="usdt-balance">≈ {usdtBalance.toFixed(2)} USDT</Text>
-      </View>
+    <div className="wallet-container">
+      <div className="balance-card">
+        <div className="balance-label">Wallet Balance</div>
+        <div className="balance-amount">£{balance.toFixed(2)}</div>
+        <div className="usdt-balance">≈ {usdtBalance.toFixed(2)} USDT</div>
+      </div>
 
-      <View className="wallet-section">
-        <Text className="section-title">Top Up Wallet</Text>
+      <div className="wallet-section">
+        <div className="section-title">Top Up Wallet</div>
         
-        <View className="quick-amounts">
+        <div className="quick-amounts">
           {quickAmounts.map(amount => (
-            <TouchableOpacity
+            <button
               key={amount}
               className="amount-button"
-              onPress={() => setTopUpAmount(amount.toString())}
+              onClick={() => setTopUpAmount(amount.toString())}
             >
-              <Text className="amount-text">£{amount}</Text>
-            </TouchableOpacity>
+              <span className="amount-text">£{amount}</span>
+            </button>
           ))}
-        </View>
+        </div>
 
-        <TextInput
+        <input
           className="amount-input"
+          type="number"
           value={topUpAmount}
-          onChangeText={setTopUpAmount}
-          keyboardType="numeric"
+          onChange={(e) => setTopUpAmount(e.target.value)}
           placeholder="Enter amount"
         />
 
-        <View className="payment-methods">
+        <div className="payment-methods">
           {['card', 'crypto_wallet'].map(method => (
-            <TouchableOpacity
+            <button
               key={method}
               className={`method-button ${selectedMethod === method ? 'method-button-selected' : ''}`}
-              onPress={() => setSelectedMethod(method)}
+              onClick={() => setSelectedMethod(method)}
             >
-              <Text className="method-text">
+              <span className="method-text">
                 {method === 'card' ? '💳 Credit Card' : '₿ Crypto Wallet'}
-              </Text>
-            </TouchableOpacity>
+              </span>
+            </button>
           ))}
-        </View>
+        </div>
 
-        <TouchableOpacity className="top-up-button" onPress={handleTopUp}>
-          <Text className="top-up-button-text">Top Up</Text>
-        </TouchableOpacity>
-      </View>
+        <button className="top-up-button" onClick={handleTopUp}>
+          <span className="top-up-button-text">Top Up</span>
+        </button>
+      </div>
 
-      <View className="wallet-section">
-        <Text className="section-title">Payment Methods</Text>
-        <View className="payment-options">
-          <View className="payment-option">
-            <Text>💳 Credit/Debit Card</Text>
-          </View>
-          <View className="payment-option">
-            <Text>₿ Crypto Wallet</Text>
-          </View>
-          <View className="payment-option">
-            <Text>💵 Cash</Text>
-          </View>
-        </View>
-      </View>
-    </ScrollView>
+      <div className="wallet-section">
+        <div className="section-title">Payment Methods</div>
+        <div className="payment-options">
+          <div className="payment-option">
+            <span>💳 Credit/Debit Card</span>
+          </div>
+          <div className="payment-option">
+            <span>₿ Crypto Wallet</span>
+          </div>
+          <div className="payment-option">
+            <span>💵 Cash</span>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
 import { useSelector } from 'react-redux';
-import { fetchRatings } from '../../features/ratingsSlice';
+import { fetchRatings } from '../features/ratingsSlice';
 
 const PassengerProfile = () => {
   const { user } = useSelector((state) => state.auth);
@@ -26,77 +25,77 @@ const PassengerProfile = () => {
 
   if (!user) {
     return (
-      <View className="loading-container">
-        <ActivityIndicator size="large" />
-        <Text className="loading-text">Loading profile...</Text>
-      </View>
+      <div className="loading-container">
+        <div>Loading...</div>
+        <div className="loading-text">Loading profile...</div>
+      </div>
     );
   }
 
   return (
-    <ScrollView className="profile-container">
-      <View className="profile-header">
-        <View className="avatar-container">
-          <View className="avatar-placeholder">
-            <Text className="avatar-text">{user.name.charAt(0).toUpperCase()}</Text>
-          </View>
-          <TouchableOpacity className="upload-button">
-            <Text className="upload-text">Upload Photo</Text>
-          </TouchableOpacity>
-        </View>
+    <div className="profile-container">
+      <div className="profile-header">
+        <div className="avatar-container">
+          <div className="avatar-placeholder">
+            <div className="avatar-text">{user.name.charAt(0).toUpperCase()}</div>
+          </div>
+          <button className="upload-button">
+            <div className="upload-text">Upload Photo</div>
+          </button>
+        </div>
 
-        <Text className="user-name">{user.name}</Text>
-        <Text className="user-rating">⭐ {averageRating.toFixed(1)}</Text>
-      </View>
+        <div className="user-name">{user.name}</div>
+        <div className="user-rating">⭐ {averageRating.toFixed(1)}</div>
+      </div>
 
-      <View className="profile-section">
-        <Text className="section-title">Personal Information</Text>
+      <div className="profile-section">
+        <div className="section-title">Personal Information</div>
         
-        <View className="field-group">
-          <Text className="field-label">Full Name</Text>
-          <Text className="field-value">{user.name}</Text>
-          <Text className="field-note">Cannot be changed</Text>
-        </View>
+        <div className="field-group">
+          <div className="field-label">Full Name</div>
+          <div className="field-value">{user.name}</div>
+          <div className="field-note">Cannot be changed</div>
+        </div>
 
-        <View className="field-group">
-          <Text className="field-label">Email</Text>
-          <TextInput
+        <div className="field-group">
+          <div className="field-label">Email</div>
+          <input
             className="editable-input"
             value={editableFields.email}
-            onChangeText={(text) => setEditableFields({ ...editableFields, email: text })}
-            keyboardType="email-address"
+            onChange={(e) => setEditableFields({ ...editableFields, email: e.target.value })}
+            type="email"
           />
-        </View>
+        </div>
 
-        <View className="field-group">
-          <Text className="field-label">Phone Number</Text>
-          <TextInput
+        <div className="field-group">
+          <div className="field-label">Phone Number</div>
+          <input
             className="editable-input"
             value={editableFields.phone}
-            onChangeText={(text) => setEditableFields({ ...editableFields, phone: text })}
-            keyboardType="phone-pad"
+            onChange={(e) => setEditableFields({ ...editableFields, phone: e.target.value })}
+            type="tel"
           />
-        </View>
-      </View>
+        </div>
+      </div>
 
-      <View className="profile-section">
-        <Text className="section-title">Ratings from Drivers</Text>
+      <div className="profile-section">
+        <div className="section-title">Ratings from Drivers</div>
         {isLoading ? (
-          <ActivityIndicator size="small" />
+          <div>Loading...</div>
         ) : (
           feedbackList.map((feedback, index) => (
-            <View key={index} className="feedback-item">
-              <Text className="feedback-rating">⭐ {feedback.score}</Text>
-              {feedback.feedback && <Text className="feedback-text">"{feedback.feedback}"</Text>}
-            </View>
+            <div key={index} className="feedback-item">
+              <div className="feedback-rating">⭐ {feedback.score}</div>
+              {feedback.feedback && <div className="feedback-text">"{feedback.feedback}"</div>}
+            </div>
           ))
         )}
-      </View>
+      </div>
 
-      <TouchableOpacity className="save-button" onPress={handleSave}>
-        <Text className="save-button-text">Save Changes</Text>
-      </TouchableOpacity>
-    </ScrollView>
+      <button className="save-button" onClick={handleSave}>
+        <div className="save-button-text">Save Changes</div>
+      </button>
+    </div>
   );
 };
 
